@@ -1,0 +1,76 @@
+#!/bin/bash
+
+######################################################################
+
+# Ce script va simuler le résultat d'un appel de vsh -create
+# Pour l'instant je ne considère pas les arguments 'nom_serveur' et
+# 'port'
+
+# ce script prendra alors un seul argument, le nom de l'archive à créer
+# cette dernière sera crée dans le dossier 'archives' du repo
+
+# Le dossier work servira comme plan de travail pour les opérations
+# (sauvegarde temporaire par exemple)
+
+# Je ne considère pas les liens pour l'instant.
+
+######################################################################
+
+if [ -z $2 ] ; then echo "Error: No directory found" ; exit 1 ; fi
+if [ -z $1 ] ; then echo "Error: No archive name found" ; exit 1 ; fi
+if ! [ -d $2 ]; then echo "Error: second argument not a directory" ; exit 1 ; fi
+
+nom_archive=$1
+
+# Pour la récursivité
+if [ -z $3 ]
+then
+    elderdir=$(pwd $2)
+    touch $2/.$nom_archive
+    echo -e "3:X\n" > $elderdir/.$nom_archive
+else
+    elderdir=$3
+fi
+
+# Crée une zone de travail cachée
+mkdir -p $2/.work
+
+# Envoie les lignes de ls -l pour les fichier/directory
+# dans un fichier lf/ld
+ls -l | egrep ^- > $2/.work/F
+ls -l | egrep ^d > $2/.work/D
+
+echo -e "directory $(pwd $2)" >> $elderdir/.$nom_archive
+
+while read line
+do
+    declare -a line=($line)
+    nom_file=${line[-1]}
+    droit_file=${line[0]}
+    taille_file=${line[4]}
+    echo $nom_file $droit_file $taille_file >> $2/.work/lf
+    echo $nom_file $droit_file $taille_file >> $elderdir/.$nom_archive
+done < $2/.work/F
+
+while read line
+do
+    declare -a line=($line)
+    nom_folder=${line[-1]}
+    droit_folder=${line[0]}
+    taille_folder=${line[4]}
+    echo $nom_folder $droit_folder $taille_folder >> $2/.work/ld
+    echo $nom_folder $droit_folder $taille_folder >> $elderdir/.$nom_archive
+done < $2/.work/D
+
+echo "@" >> $elderdir/.$nom_archive
+
+#while read line
+#do
+#    declare -a line=($line)
+#    nom_folder=${line[-1]}
+#    echo $nom_archive $nom_folder $elderdir
+#    /home/batto/ArchiveServeur/vsh_create $nom_archive $nom_folder $elderdir
+#done < $2/.work/D
+
+# Détruit le dossier caché de travail
+# rm -r .work/
