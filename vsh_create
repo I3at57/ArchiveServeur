@@ -72,4 +72,4 @@ do
 done < $curentdir/.work/D
 
 # Détruit le dossier caché de travail
-# rm -r .work/
+rm -r $curentdir/.work
