@@ -64,21 +64,12 @@ done < $curentdir/.work/D
 
 echo "@" >> $elderdir/.$nom_archive
 
-if [ -s $curentdir/.work/D ]
-then
-    while read line
-    do
-        declare -a line=($line)
-        nom_folder=${line[-1]}
-        if [ "$(ls -A $curentdir/$nom_folder)" ]
-        then
-            # echo $nom_folder
-            # echo $curentdir
-            # echo "/home/batto/ArchiveServeur/vsh_create $nom_archive $curentdir/$nom_folder"
-            /home/batto/ArchiveServeur/vsh_create $nom_archive $curentdir/$nom_folder
-        fi
-    done < $curentdir/.work/D
-fi
+while read line
+do
+    declare -a line=($line)
+    nom_folder=${line[-1]}
+    /home/batto/ArchiveServeur/vsh_create $nom_archive $curentdir/$nom_folder
+done < $curentdir/.work/D
 
 # Détruit le dossier caché de travail
 rm -r $curentdir/.work
