@@ -73,3 +73,10 @@ done < $curentdir/.work/D
 
 # Détruit le dossier caché de travail
 rm -r $curentdir/.work
+
+if [ -z $2 ]
+# On entre dans cette boucle uniquement à la première itération de la boucle
+then
+    echo "oui"
+    pwd
+fi
