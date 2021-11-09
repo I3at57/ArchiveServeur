@@ -26,6 +26,10 @@ then
     : > $(pwd)/.$1
     echo -e "3:X\n" > $(pwd)/.$1
     curentdir=$(pwd)
+
+    # Crée un liste des fichiers globale
+    : > $(pwd)/.listfile
+    : > $(pwd)/.listdir
 else
     curentdir=$2
 fi
@@ -50,6 +54,7 @@ do
     # taille_file=${line[4]}
     echo ${line[-1]} ${line[0]} ${line[4]} >> $curentdir/.work/lf
     echo ${line[-1]} ${line[0]} ${line[4]} >> $(pwd)/.$1
+    echo $curentdir/${line[-1]} >> $(pwd)/.listfile
 done < $curentdir/.work/F
 
 while read line
@@ -60,6 +65,7 @@ do
     # taille_folder=${line[4]}
     echo ${line[-1]} ${line[0]} ${line[4]} >> $curentdir/.work/ld
     echo ${line[-1]} ${line[0]} ${line[4]} >> $(pwd)/.$1
+    echo $curentdir/${line[-1]} >> $(pwd)/.listdir
 done < $curentdir/.work/D
 
 echo "@" >> $(pwd)/.$1
@@ -77,6 +83,25 @@ rm -r $curentdir/.work
 if [ -z $2 ]
 # On entre dans cette boucle uniquement à la première itération de la boucle
 then
-    echo "oui"
-    pwd
+    # Récupère des données
+    num_end_header=$(wc -l .$1 | cut -d' ' -f1)
+    num_start_body=$(($num_end_header))
+
+    # Modifie la première ligne du fichier en fonction de la taille
+    cat .$1 > $(pwd)/.temp
+    echo 3:$num_start_body > $(pwd)/.$1
+    tail -$(($num_end_header-1)) $(pwd)/.temp >> $(pwd)/.$1
+    rm $(pwd)/.temp
+
+    # Ajoute un espace avant le body
+    echo >> $(pwd)/.$1
+
+    while read line
+    do
+        cat $line >> $(pwd)/.$1
+    done < $(pwd)/.listfile
+
+    rm $(pwd)/.listdir $(pwd)/.listfile
+
+    cat $(pwd)/.$1
 fi
