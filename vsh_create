@@ -18,14 +18,14 @@
 
 if [ -z $1 ] ; then echo "Error: No archive name found" ; exit 1 ; fi
 
-nom_archive=$1
-elderdir=$(pwd)
 # Pour la récursivité
+# $(pwd) = dossier ancêtre
+
 if [ -z $2 ]
 then
-    : > $elderdir/.$nom_archive
-    echo -e "3:X\n" > $elderdir/.$nom_archive
-    curentdir=$elderdir
+    : > $(pwd)/.$1
+    echo -e "3:X\n" > $(pwd)/.$1
+    curentdir=$(pwd)
 else
     curentdir=$2
 fi
@@ -40,35 +40,35 @@ ls -l $curentdir | egrep ^d > $curentdir/.work/D
 : > $curentdir/.work/lf
 : > $curentdir/.work/ld
 
-echo -e "directory $curentdir" >> $elderdir/.$nom_archive
+echo -e "directory $curentdir" >> $(pwd)/.$1
 
 while read line
 do
     declare -a line=($line)
-    nom_file=${line[-1]}
-    droit_file=${line[0]}
-    taille_file=${line[4]}
-    echo $nom_file $droit_file $taille_file >> $curentdir/.work/lf
-    echo $nom_file $droit_file $taille_file >> $elderdir/.$nom_archive
+    # nom_file=${line[-1]}
+    # droit_file=${line[0]}
+    # taille_file=${line[4]}
+    echo ${line[-1]} ${line[0]} ${line[4]} >> $curentdir/.work/lf
+    echo ${line[-1]} ${line[0]} ${line[4]} >> $(pwd)/.$1
 done < $curentdir/.work/F
 
 while read line
 do
     declare -a line=($line)
-    nom_folder=${line[-1]}
-    droit_folder=${line[0]}
-    taille_folder=${line[4]}
-    echo $nom_folder $droit_folder $taille_folder >> $curentdir/.work/ld
-    echo $nom_folder $droit_folder $taille_folder >> $elderdir/.$nom_archive
+    # nom_folder=${line[-1]}
+    # droit_folder=${line[0]}
+    # taille_folder=${line[4]}
+    echo ${line[-1]} ${line[0]} ${line[4]} >> $curentdir/.work/ld
+    echo ${line[-1]} ${line[0]} ${line[4]} >> $(pwd)/.$1
 done < $curentdir/.work/D
 
-echo "@" >> $elderdir/.$nom_archive
+echo "@" >> $(pwd)/.$1
 
 while read line
 do
     declare -a line=($line)
-    nom_folder=${line[-1]}
-    /home/batto/ArchiveServeur/vsh_create $nom_archive $curentdir/$nom_folder
+    # nom_folder=${line[-1]}
+    /home/batto/ArchiveServeur/vsh_create $1 $curentdir/${line[-1]}
 done < $curentdir/.work/D
 
 # Détruit le dossier caché de travail
