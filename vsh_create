@@ -120,4 +120,4 @@ done <$tmp_header
 # Ajouter le body temporaire a la fin de l'archive
 cat $tmp_body >> $archive
 
-cat $archive
+rm /tmp/vsh_create.*
