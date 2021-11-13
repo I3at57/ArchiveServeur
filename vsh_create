@@ -9,7 +9,7 @@ tmp_header=$(mktemp /tmp/vsh_create.XXXXXX)
 tmp_body=$(mktemp /tmp/vsh_create.XXXXXX)
 archive=.$1
 
-rm $archive
+if [[ -f $archive ]]; then rm $archive; fi
 
 # Pour créer le header, nous devons d'abord connaitre le nombre de ligne du header. 
 # Pour faire cela, nous allons commencer par créer un fichier header temporaire,
