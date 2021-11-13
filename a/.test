@@ -1,0 +1,11 @@
+3:9
+
+directory .
+test espaces -rw-r--r-- 16 10 11
+a espaces drwxr-xr-x 16
+@
+directory ./a espaces
+asdfsafd -rw-r--r-- 13 11 12
+@
+asdfsafdsadfsadf
+fiujhdijbvfsu
