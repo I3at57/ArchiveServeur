@@ -76,6 +76,7 @@ while IFS="\n" read line; do
             fichier=$(echo $line | cut -d ' ' -f2-)
 
             # On fait un "ls -l" sur le fichier. C'est pour cela qu'il fallait garder le chemin relatif au fichier.
+            # Le "-d" permet de traiter un dossier comme un fichier, c'est a dire ne pas aller chercher le contenu du dossier.
             ls_l=$(ls -ld "$fichier")
             
             droits=$(echo $ls_l | cut -d ' ' -f1)
