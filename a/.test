@@ -1,20 +1,21 @@
-3:9
+3:10
 
 directory .
-test espaces -rw-r--r-- 16 10 11
 a espaces drwxr-xr-x 16
+test espaces -rw-r--r-- 19 11 1
+vide -rw-r--r-- 0 12 0
 @
 directory ./a espaces
-asdfsafd -rw-r--r-- 38 11 21
+asdfsafd -rw-r--r-- 59 12 10
 @
-asdfsafdsadfsadf
-fiujhdijbvfsu
-
-
-sadf
-sadf
-sadf
-
-
-sadf
-
+1. asdfsafdsadfsadf
+1.fiujhdijbvfsu
+2.
+3.
+4.sadf
+5.sadf
+6.sadf
+7.
+8.
+9.sadf
+10.
