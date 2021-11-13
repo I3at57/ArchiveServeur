@@ -91,16 +91,24 @@ while IFS="\n" read line; do
             if [[ -f $fichier ]]; then
             # Si c'est un fichier, il faut mettre le contenu du fichier a la fin de l'archive, et mettre les lignes de debut et fin de contenu.
             # Etant donné que nous n'avons pas fini d'ecrire le debut de l'archive, il faut pour l'instant mettre le body dans un autre fichier temporaire.
-                cat "$fichier" >> $tmp_body
-                echo >> $tmp_body
-                long_body=$(cat "$fichier" | wc -l)
 
-                # "wc -l" donne le nombre de "\n" dans le fichier, mais cela donne le nombre de ligne -1
-                ((long_body+=1))
-                echo $nom $droits $taille $fin_body_actu $((fin_body_actu+long_body))>> $archive
+                # Si le fichier est vide, le nombre de lignes du fichier est 0
+                if [[ ! -s "$fichier" ]]; then
+                    nb_lignes=0
+                else
+                    # "wc -l" donne le nombre de "\n" dans le fichier, mais cela donne le nombre de ligne - 1
+                    # Par exemple un fichier d'une seule ligne n'aura pas de "\n", donc wc donnera 0, mais nous voulons 1
+                    nb_lignes=$(cat "$fichier" | wc -l)
+                    ((nb_lignes+=1))
+
+                    cat "$fichier" >> $tmp_body
+                    echo >> $tmp_body
+                fi
+
+                echo $nom $droits $taille $fin_body_actu $((nb_lignes))>> $archive
 
                 # Incrementer la fin du body de la longeur du fichier qui vient d'etre ecrit.
-                ((fin_body_actu+=long_body))
+                ((fin_body_actu+=nb_lignes))
             else
             # Sinon, on peut directement ecrire les infos du dossier
                 echo $nom $droits $taille >> $archive
