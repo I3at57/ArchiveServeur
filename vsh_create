@@ -91,7 +91,8 @@ while IFS="\n" read line; do
             if [[ -f $fichier ]]; then
             # Si c'est un fichier, il faut mettre le contenu du fichier a la fin de l'archive, et mettre les lignes de debut et fin de contenu.
             # Etant donné que nous n'avons pas fini d'ecrire le debut de l'archive, il faut pour l'instant mettre le body dans un autre fichier temporaire.
-                echo $(cat "$fichier") >> $tmp_body
+                cat "$fichier" >> $tmp_body
+                echo >> $tmp_body
                 long_body=$(cat "$fichier" | wc -l)
 
                 # "wc -l" donne le nombre de "\n" dans le fichier, mais cela donne le nombre de ligne -1
