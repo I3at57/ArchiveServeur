@@ -7,7 +7,7 @@ fi
 # Créer un fichier temporaire dans /tmp
 tmp_header=$(mktemp /tmp/vsh_create.XXXXXX)
 tmp_body=$(mktemp /tmp/vsh_create.XXXXXX)
-archive=.$1
+archive=$1
 
 if [[ -f $archive ]]; then rm $archive; fi
 
@@ -49,8 +49,9 @@ while IFS= read -r dossier; do
 
     echo @ >>$tmp_header
 
+# ~+ donne le chemin de repertoire courant, ainsi "find" donnera les chemins absolues des dossiers
 # -type d permet de ne seulement trouver les dossiers
-done <<< $(find . -maxdepth 1 -type d)
+done <<< $(find ~+ -maxdepth 1 -type d)
 
 # Trouver la longueur du header, ajouter 2 pour trouver la fin du header (une ligne pour le debut et fin du header, et une ligne vide)
 long_head=$(cat $tmp_header | wc -l)
