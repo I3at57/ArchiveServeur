@@ -33,13 +33,15 @@ if [[ -f $archive ]]; then rm $archive; fi
 while IFS= read -r dossier; do
 
     # On ajoute le nom du dossier actuel
-    echo h $dossier >>$tmp_header
+    echo h $dossier >> $tmp_header
 
     # Pour chaque fichier dans le dossier actuel
     while IFS= read -r fichier; do
 
         # On ajoute le chemin relatif au fichier
-        echo c $fichier  >>$tmp_header
+        if [[ ! -z $fichier ]]; then
+            echo c $fichier  >> $tmp_header
+        fi
 
     # On utilise "find" a la place de "ls" car find donne chaque resultat sur une nouvelle ligne,
     # ce qui facilite la manipulation de nom de fichiers contenant des esapces.
