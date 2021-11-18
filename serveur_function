@@ -10,6 +10,7 @@ if [ $# -ne 1 ]; then
 fi
 
 PORT="$1"
+EXIT="N"
 
 # Declaration du tube
 
@@ -40,7 +41,9 @@ function accept-loop() {
 #                                                                            
 #         commande-CMD arg1 arg2 ... argn                                      
 #                                                                              
-# si elle existe; sinon elle envoie une reponse d'erreur.                     
+# si elle existe; sinon elle envoie une reponse d'erreur.                    
+
+# Cette fonction va récupérer les arguments et executer la commande choisie
 function interaction() {
     local cmd args
     while true; do
@@ -54,30 +57,46 @@ function interaction() {
     done
 }
 
-# Les fonctions implementant les differentes commandes du serveur
+###########################################################################
+# Les fonctions serieuses
+###########################################################################
+
 function commande-non-comprise () {
-   echo "Le serveur ne peut pas interpreter cette commande"
+	echo "Le serveur ne peut pas interpreter cette commande"
 }
 
-function commande-concon() {
-	echo "concon"
+documentation_doc="Donne de la documentation sur les commandes possibles."
+function commande-documentation() {
+	echo documentation/d: $documentation_doc
+	echo echo: $echo_doc
+	echo quit: $qui_doc
+}
+function commande-d() {
+	commande-documentation
 }
 
+echo_doc="Retourne les arguments donnés."
 function commande-echo() {
-	echo "$1"
+	echo "$*"
 }
 
-function commande-shutdown() {
-	for ((i=0; i<100; i++)) {
-		echo $i
-		sleep 1
-	}
-	shutdown 
+function commande-converttoupper() {
+	echo ${*^^}
 }
 
-function commande-kali() {
-	netcat 192.168.56.101 $1
+function commande-converttolower() {
+	echo ${*,,}
 }
+
+qui_doc="Quite la fonction."
+function commande-quit() {
+	echo Bye !
+	exit 0
+}
+
+###########################################################################
+# Les fonctions pas sérieuses
+###########################################################################
 
 # On accepte et traite les connexions
 accept-loop
