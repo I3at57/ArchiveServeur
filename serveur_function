@@ -12,6 +12,8 @@ fi
 PORT="$1"
 EXIT="N"
 LOCATION="$(pwd $(dirname "${BASH_SOURCE}"))"
+echo $LOCATION
+TUTU='0'
 
 # Declaration du tube
 
@@ -48,13 +50,18 @@ function accept-loop() {
 function interaction() {
     local cmd args
     while true; do
-	read cmd args || exit -1
-	fun="commande-$cmd"
-	if [ "$(type -t $fun)" = "function" ]; then
-	    $fun $args
-	else
-	    commande-non-comprise $fun $args
-	fi
+		if [ $TUTU = '1' ]
+		then
+			pkill -15 netcat
+		else
+			read cmd args || exit -1
+			fun="commande-$cmd"
+			if [ "$(type -t $fun)" = "function" ]; then
+				$fun $args
+			else
+				commande-non-comprise $fun $args
+			fi
+		fi
     done
 }
 
@@ -117,7 +124,7 @@ function commande-copie-fichier() {
 qui_doc="Quite la fonction."
 function commande-quit() {
 	echo Bye !
-	exit 0
+	TUTU='1'
 }
 
 ###########################################################################
