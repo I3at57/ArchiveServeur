@@ -89,27 +89,24 @@ function commande-converttolower() {
 	echo ${*,,}
 }
 
+function commande-creer-archive() {
+	echo $1
+	:> $LOCATION/archives/$1
+}
+
 function commande-ecrire-fichier() {
 	if [ -z $1 ] ; then echo "Error: No file name found" ; exit 1 ; fi
-
-	echo "Salut !"
-
-	NOMFILE=$1
+	
+	NOM=$1
 	shift
-
-	for i in $*
-	do
-		echo $i > $LOCATION/archives/$NOMFILE
-	done
+	txt=$*
+	echo "$txt" >> $LOCATION/archives/$NOM
 }
 
 function commande-copie-fichier() {
-### EN CHANTIER ###
 	if [ -z $1 ] ; then echo "Error: No file name found" ; exit 1 ; fi
 
 	NOMFILE=$(basename $1)
-
-	:> $LOCATION/archives/$NOMFILE
 
     while read line
     do

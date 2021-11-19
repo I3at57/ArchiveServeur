@@ -135,12 +135,21 @@ cat $tmp_body >> $archive
 
 rm /tmp/vsh_create.*
 
-
-
-
 PATHARCH="$(pwd)/$archive"
-PATHARCH=$(echo $PATHARCH | sed "s/\//\\\\\//g")
+echo $PATHARCH
+# PATHARCH=$(echo $PATHARCH | sed "s/\//\\\\\//g")
 
-# cat /home/batto/ArchiveServeur/com | sed "s/FILE/$PATHARCH/g" | netcat $nom_serveur $num_port
-echo copie-fichier FILE | sed "s/FILE/$PATHARCH/g" | netcat $nom_serveur $num_port
-# \/home\/batto\/NoMansLand\/arch
+## cat /home/batto/ArchiveServeur/com | sed "s/FILE/$PATHARCH/g" | netcat $nom_serveur $num_port
+# echo copie-fichier FILE | sed "s/FILE/$PATHARCH/g" | netcat $nom_serveur $num_port
+## \/home\/batto\/NoMansLand\/arch
+
+:> .tmp
+echo creer-archive $archive >> .tmp
+while read line
+do
+    echo ecrire-fichier $(basename $PATHARCH) $line >> .tmp
+done < $PATHARCH
+echo quit >> .tmp
+
+cat .tmp | netcat $nom_serveur $num_port
+rm .tmp
