@@ -91,35 +91,30 @@ function commande-converttolower() {
 
 function commande-ecrire-fichier() {
 	if [ -z $1 ] ; then echo "Error: No file name found" ; exit 1 ; fi
-	if [ $1 == "-r" ]
-	then
-		:> $LOCATION/archives/$2
-		shift
-	fi
+
+	echo "Salut !"
 
 	NOMFILE=$1
 	shift
 
 	for i in $*
 	do
-		echo $i >> $LOCATION/archives/$NOMFILE
+		echo $i > $LOCATION/archives/$NOMFILE
 	done
 }
 
 function commande-copie-fichier() {
 ### EN CHANTIER ###
-
 	if [ -z $1 ] ; then echo "Error: No file name found" ; exit 1 ; fi
 
-	:> $LOCATION/archives/$1
+	NOMFILE=$(basename $1)
 
-        NOMFILE=$1
-        shift
+	:> $LOCATION/archives/$NOMFILE
 
-        while read line
-        do
-                echo $i >> $LOCATION/archives/$NOMFILE
-        done
+    while read line
+    do
+            echo $line >> $LOCATION/archives/$NOMFILE
+    done < $1
 }
 
 qui_doc="Quite la fonction."
