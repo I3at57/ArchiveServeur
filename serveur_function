@@ -11,6 +11,7 @@ fi
 
 PORT="$1"
 EXIT="N"
+LOCATION="$(pwd $(dirname "${BASH_SOURCE}"))"
 
 # Declaration du tube
 
@@ -86,6 +87,39 @@ function commande-converttoupper() {
 
 function commande-converttolower() {
 	echo ${*,,}
+}
+
+function commande-ecrire-fichier() {
+	if [ -z $1 ] ; then echo "Error: No file name found" ; exit 1 ; fi
+	if [ $1 == "-r" ]
+	then
+		:> $LOCATION/archives/$2
+		shift
+	fi
+
+	NOMFILE=$1
+	shift
+
+	for i in $*
+	do
+		echo $i >> $LOCATION/archives/$NOMFILE
+	done
+}
+
+function commande-copie-fichier() {
+### EN CHANTIER ###
+
+	if [ -z $1 ] ; then echo "Error: No file name found" ; exit 1 ; fi
+
+	:> $LOCATION/archives/$1
+
+        NOMFILE=$1
+        shift
+
+        while read line
+        do
+                echo $i >> $LOCATION/archives/$NOMFILE
+        done
 }
 
 qui_doc="Quite la fonction."
