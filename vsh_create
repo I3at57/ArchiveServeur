@@ -152,4 +152,4 @@ done < $PATHARCH
 echo quit >> .tmp
 
 cat .tmp | netcat $nom_serveur $num_port
-rm .tmp
+rm .tmp $PATHARCH

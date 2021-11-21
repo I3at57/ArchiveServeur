@@ -11,12 +11,17 @@ fi
 
 PORT="$1"
 EXIT="N"
-LOCATION="$(pwd $(dirname "${BASH_SOURCE}"))"
+# Location doit être mis à jour avec le chemin vers le dossier .archives, ou l'on veut stocker nos archives.
+LOCATION="/home/batto"
+if ! [ -d $LOCATION/.archives ]
+then
+	mkdir $LOCATION/.archives
+fi
+LOCATION="$LOCATION/.archives"
 echo $LOCATION
-TUTU='0'
+CUT_CONNEXION='0'
 
 # Declaration du tube
-
 FIFO="/tmp/$USER-fifo-$$"
 
 # Il faut detruire le tube quand le serveur termine pour eviter de
@@ -50,9 +55,10 @@ function accept-loop() {
 function interaction() {
     local cmd args
     while true; do
-		if [ $TUTU = '1' ]
+		if [ $CUT_CONNEXION = '1' ]
 		then
 			pkill -15 netcat
+			CUT_CONNEXION='0'
 		else
 			read cmd args || exit -1
 			fun="commande-$cmd"
@@ -98,7 +104,7 @@ function commande-converttolower() {
 
 function commande-creer-archive() {
 	echo $1
-	:> $LOCATION/archives/$1
+	:> $LOCATION/$1
 }
 
 function commande-ecrire-fichier() {
@@ -107,7 +113,7 @@ function commande-ecrire-fichier() {
 	NOM=$1
 	shift
 	txt=$*
-	echo "$txt" >> $LOCATION/archives/$NOM
+	echo "$txt" >> $LOCATION/$NOM
 }
 
 function commande-copie-fichier() {
@@ -117,14 +123,14 @@ function commande-copie-fichier() {
 
     while read line
     do
-            echo $line >> $LOCATION/archives/$NOMFILE
+            echo $line >> $LOCATION/$NOMFILE
     done < $1
 }
 
 qui_doc="Quite la fonction."
 function commande-quit() {
 	echo Bye !
-	TUTU='1'
+	CUT_CONNEXION='1'
 }
 
 ###########################################################################
