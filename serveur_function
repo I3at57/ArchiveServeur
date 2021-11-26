@@ -12,7 +12,7 @@ fi
 PORT="$1"
 EXIT="N"
 # Location doit être mis à jour avec le chemin vers le dossier .archives, ou l'on veut stocker nos archives.
-LOCATION="/home/batto"
+LOCATION="$HOME"
 if ! [ -d $LOCATION/.archives ]
 then
 	mkdir $LOCATION/.archives
@@ -84,6 +84,8 @@ function commande-documentation() {
 	echo documentation/d: $documentation_doc
 	echo echo: $echo_doc
 	echo quit: $qui_doc
+	echo quit-s: $quis_doc
+	echo ecrire-fichier: $ecrire_doc
 }
 function commande-d() {
 	commande-documentation
@@ -107,6 +109,7 @@ function commande-creer-archive() {
 	:> $LOCATION/$1
 }
 
+ecrire_doc="Ajoute les arguments a l'archive présente dans $HOME/.archives"
 function commande-ecrire-fichier() {
 	if [ -z $1 ] ; then echo "Error: No file name found" ; exit 1 ; fi
 	
@@ -127,9 +130,37 @@ function commande-copie-fichier() {
     done < $1
 }
 
+
+#### EN CHANTIER #####
+function commande-extract() {
+	# vérifie que l'archive existe
+
+	echo $*
+
+	if ! [ -f $HOME/.archives/$1 ]
+	then
+		echo "Error: archive $1 not found, probably does not exist"
+		exit 1
+	fi
+	
+	pkill -15 netcat
+        CUT_CONNEXION='0'
+	sleep 5
+
+	echo "Taper ctrl+C"
+	nc $2 $3 < $HOME/.archives/$1
+
+	echo "Archive transférée avec succès !"
+}
+
 qui_doc="Quite la fonction."
 function commande-quit() {
 	echo Bye !
+	CUT_CONNEXION='1'
+}
+
+quis_doc="Quitte la focntion sans bye."
+function commande-quit-s() {
 	CUT_CONNEXION='1'
 }
 

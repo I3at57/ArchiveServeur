@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# Vérifie la présence des arguments
+if [ -z $1 ] ; then echo "Error: No server name found" ; exit 1 ; fi
+if [ -z $2 ] ; then echo "Error: No port number found" ; exit 1 ; fi
+if [ -z $3 ] ; then echo "Error: No archive name found" ; exit 1 ; fi
+
+# Dans ce documents il y a deux parties, la première va envoer des arguments au serveur pour extraire l'archive
+#
+# La seconde partie servira à recréer l'arborécence de fichier correspondant.
+
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
+# Je considère que l'archive se trouve en fichier caché .$3
+
+ELDER_DIR=$(pwd)
+ARCHIVE="$3"
+#echo $CURRENT_DIR $ARCHIVE_PATH
+
+DEBUT_HEADER=$(head -1 $ARCHIVE | cut -d':' -f1)
+DEBUT_BODY=$(head -1 $ARCHIVE | cut -d':' -f2)
+NBR_LIGNE_ARCH=$(wc -l $ARCHIVE | cut -d' ' -f1)
+
+#Crée deux fichiers temporaires pour le body et le header
+tail -$(($NBR_LIGNE_ARCH - $DEBUT_BODY)) $ARCHIVE > .tempbody
+tail -$(($NBR_LIGNE_ARCH - $DEBUT_HEADER + 1)) $ARCHIVE | head -$(($DEBUT_BODY - $DEBUT_HEADER + 1)) > .temphead
+
+# Récupère le nom de dossier du dossier racine
+NOM_BASE=$(echo $(basename $(head -1 .temphead | cut -d' ' -f2)))
+echo $NOM_BASE
+
+NOM_DROP="$(echo $(dirname $(head -1 .temphead | cut -d' ' -f2)))/"
+echo $NOM_DROP
+NOM_DROP=$(echo $NOM_DROP | sed 's/\//\\\//g')
+echo $NOM_DROP
+
+mkdir -p $NOM_BASE
+currentdir="./"
+while read lines
+do
+	if [[ $lines =~ ^directory ]]
+	then
+		currentdir=$(echo $(echo $lines | cut -d' ' -f2) | sed "s/$NOM_DROP//")
+		# echo $currentdir
+	else
+		if [[ $(echo $lines | cut -d' ' -f2) =~ ^d ]]
+		then
+			# echo "$currentdir/$(echo $lines | cut -d' ' -f1)"
+			mkdir -p $currentdir/$(echo $lines | cut -d' ' -f1)
+		else
+			:
+		fi
+	fi
+done < .temphead
+
+#cd $ELDER_DIR
+
+
+
+#ip addr | grep 'state UP' -A2 | tail -n1 | awk '{print }' | cut -f1  -d'/'
