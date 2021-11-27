@@ -26,12 +26,12 @@ tail -$(($NBR_LIGNE_ARCH - $DEBUT_HEADER + 1)) $ARCHIVE | head -$(($DEBUT_BODY -
 
 # Récupère le nom de dossier du dossier racine
 NOM_BASE=$(echo $(basename $(head -1 .temphead | cut -d' ' -f2)))
-echo $NOM_BASE
+# echo $NOM_BASE
 
 NOM_DROP="$(echo $(dirname $(head -1 .temphead | cut -d' ' -f2)))/"
-echo $NOM_DROP
+# echo $NOM_DROP
 NOM_DROP=$(echo $NOM_DROP | sed 's/\//\\\//g')
-echo $NOM_DROP
+# echo $NOM_DROP
 
 mkdir -p $NOM_BASE
 currentdir="./"
@@ -40,20 +40,34 @@ do
 	if [[ $lines =~ ^directory ]]
 	then
 		currentdir=$(echo $(echo $lines | cut -d' ' -f2) | sed "s/$NOM_DROP//")
-		# echo $currentdir
 	else
 		if [[ $(echo $lines | cut -d' ' -f2) =~ ^d ]]
 		then
-			# echo "$currentdir/$(echo $lines | cut -d' ' -f1)"
 			mkdir -p $currentdir/$(echo $lines | cut -d' ' -f1)
-		else
+		elif [[ $lines =~ ^@$ ]]
+		then
 			:
+		else
+			nom_file=$(echo $lines | cut -d' ' -f1)
+			path="$currentdir/$nom_file"
+			# echo $nom_file $path
+
+		        debut_file=$(echo $lines | cut -d' ' -f4)
+		        nbr_file=$(echo $lines | cut -d' ' -f5)
+			# echo $debut_file $nbr_file
+			marqA=$((debut_file - DEBUT_BODY + nbr_file - 1))
+			head -$marqA .tempbody | tail -$nbr_file > $path
+
+			droits=$(echo $lines | cut -d' ' -f2)
+			user=${droits:1:3}
+			group=${droits:4:3}
+			other=${droits:7:3}
+
+			chmod u=$user $path
+			chmod g=$group $path
+			chmod o=$other $path	
 		fi
 	fi
 done < .temphead
 
-#cd $ELDER_DIR
-
-
-
-#ip addr | grep 'state UP' -A2 | tail -n1 | awk '{print }' | cut -f1  -d'/'
+rm .temphead .tempbody
