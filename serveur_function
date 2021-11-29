@@ -4,22 +4,23 @@
 # Le script doit etre invoque avec l'argument :                                                              
 # PORT   le port sur lequel le serveur attend ses clients  
 
-if [ $# -ne 1 ]; then
-    echo "usage: $(basename $0) PORT"
+if [ -z $1 ]; then
+    echo "usage: $(basename $0) <port> [chemin-archive]"
     exit -1
 fi
 
 PORT="$1"
-EXIT="N"
-# Location doit être mis à jour avec le chemin vers le dossier .archives, ou l'on veut stocker nos archives.
-LOCATION="/home/batto"
-if ! [ -d $LOCATION/.archives ]
-then
-	mkdir $LOCATION/.archives
+
+if [ ! -z $2 ]; then
+	LOCATION=$2
+else
+	LOCATION="$HOME/.archives"
 fi
-LOCATION="$LOCATION/.archives"
-echo $LOCATION
-CUT_CONNEXION='0'
+
+if ! [ -d $LOCATION ]
+then
+	mkdir $LOCATION
+fi
 
 # Declaration du tube
 FIFO="/tmp/$USER-fifo-$$"
@@ -36,7 +37,8 @@ trap nettoyage EXIT
 
 function accept-loop() {
     while true; do
-	interaction < "$FIFO" | netcat -l -p "$PORT" > "$FIFO"
+		echo new connection
+		interaction < "$FIFO" | ncat -l -p "$PORT" > "$FIFO"
     done
 }
 
@@ -53,22 +55,13 @@ function accept-loop() {
 
 # Cette fonction va récupérer les arguments et executer la commande choisie
 function interaction() {
-    local cmd args
-    while true; do
-		if [ $CUT_CONNEXION = '1' ]
-		then
-			pkill -15 netcat
-			CUT_CONNEXION='0'
-		else
-			read cmd args || exit -1
-			fun="commande-$cmd"
-			if [ "$(type -t $fun)" = "function" ]; then
-				$fun $args
-			else
-				commande-non-comprise $fun $args
-			fi
-		fi
-    done
+	read cmd args || exit -1
+	fun="commande-$cmd"
+	if [ "$(type -t $fun)" = "function" ]; then
+		cat | $fun $args
+	else
+		cat | commande-non-comprise $fun $args
+	fi
 }
 
 ###########################################################################
@@ -94,48 +87,21 @@ function commande-echo() {
 	echo "$*"
 }
 
-function commande-converttoupper() {
-	echo ${*^^}
-}
-
-function commande-converttolower() {
-	echo ${*,,}
-}
-
-function commande-creer-archive() {
-	echo $1
-	:> $LOCATION/$1
-}
 
 function commande-ecrire-fichier() {
 	if [ -z $1 ] ; then echo "Error: No file name found" ; exit 1 ; fi
 	
-	NOM=$1
-	shift
-	txt=$*
-	echo "$txt" >> $LOCATION/$NOM
+	cat > $LOCATION/$1
 }
 
-function commande-copie-fichier() {
+function commande-lire-fichier() {
 	if [ -z $1 ] ; then echo "Error: No file name found" ; exit 1 ; fi
 
-	NOMFILE=$(basename $1)
+	# Compter le nombre de caracteres à envoyer
+	cat $1 | wc -c
 
-    while read line
-    do
-            echo $line >> $LOCATION/$NOMFILE
-    done < $1
+	cat LOCATION/$1
 }
-
-qui_doc="Quite la fonction."
-function commande-quit() {
-	echo Bye !
-	CUT_CONNEXION='1'
-}
-
-###########################################################################
-# Les fonctions pas sérieuses
-###########################################################################
 
 # On accepte et traite les connexions
 accept-loop

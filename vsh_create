@@ -1,17 +1,16 @@
 #!/bin/bash
-if [[ -z $1 ]]; then 
-    echo "Usage: vsh_create <nom_archive>"
+if [[ $# -ne 3 ]]; then 
+    echo "Usage: vsh_create <nom_archive> <host> <port>"
     exit 1
 fi
 
 # Créer un fichier temporaire dans /tmp
 tmp_header=$(mktemp /tmp/vsh_create.XXXXXX)
 tmp_body=$(mktemp /tmp/vsh_create.XXXXXX)
+tmp_archive=$(mktemp /tmp/vsh_create.XXXXXX)
 archive=$1
-nom_serveur=$2
-num_port=$3
-
-if [[ -f $archive ]]; then rm $archive; fi
+host=$2
+port=$3
 
 # Pour créer le header, nous devons d'abord connaitre le nombre de ligne du header. 
 # Pour faire cela, nous allons commencer par créer un fichier header temporaire,
@@ -61,8 +60,8 @@ done <<< $(find ~+ -type d)
 long_head=$(cat $tmp_header | wc -l)
 fin_head=$((long_head+2))
 
-echo 3:$fin_head >$archive
-echo >>$archive
+echo 3:$fin_head >$tmp_archive
+echo >>$tmp_archive
 
 # Contient la fin du body pour l'instant. Cette variable sera incrementée de la longeur de chaque fichier ajouté
 fin_body_actu=$((fin_head+1))
@@ -74,7 +73,7 @@ while IFS="\n" read line; do
         h)
             # Le "cut -d ' ' -f2-" permet de prendre tout ce qui vient apres le premier espace,
             # meme des fichiers dont les noms contiennent des espaces
-            echo directory $(echo $line | cut -d ' ' -f2-) >> $archive
+            echo directory $(echo $line | cut -d ' ' -f2-) >> $tmp_archive
         ;;
 
         c)
@@ -110,18 +109,18 @@ while IFS="\n" read line; do
                     echo >> $tmp_body
                 fi
 
-                echo $nom $droits $taille $fin_body_actu $((nb_lignes))>> $archive
+                echo $nom $droits $taille $fin_body_actu $((nb_lignes))>> $tmp_archive
 
                 # Incrementer la fin du body de la longeur du fichier qui vient d'etre ecrit.
                 ((fin_body_actu+=nb_lignes))
             else
             # Sinon, on peut directement ecrire les infos du dossier
-                echo $nom $droits $taille >> $archive
+                echo $nom $droits $taille >> $tmp_archive
             fi
         ;;
 
         @)
-            echo @ >> $archive
+            echo @ >> $tmp_archive
         ;;
         *)
             echo error $line
@@ -131,25 +130,8 @@ while IFS="\n" read line; do
 done <$tmp_header
 
 # Ajouter le body temporaire a la fin de l'archive
-cat $tmp_body >> $archive
+cat $tmp_body >> $tmp_archive
+
+(echo ecrire-fichier $archive; cat $tmp_archive;) | ncat "$host" "$port"
 
 rm /tmp/vsh_create.*
-
-PATHARCH="$(pwd)/$archive"
-echo $PATHARCH
-# PATHARCH=$(echo $PATHARCH | sed "s/\//\\\\\//g")
-
-## cat /home/batto/ArchiveServeur/com | sed "s/FILE/$PATHARCH/g" | netcat $nom_serveur $num_port
-# echo copie-fichier FILE | sed "s/FILE/$PATHARCH/g" | netcat $nom_serveur $num_port
-## \/home\/batto\/NoMansLand\/arch
-
-:> .tmp
-echo creer-archive $archive >> .tmp
-while read line
-do
-    echo ecrire-fichier $(basename $PATHARCH) $line >> .tmp
-done < $PATHARCH
-echo quit >> .tmp
-
-cat .tmp | netcat $nom_serveur $num_port
-rm .tmp $PATHARCH
