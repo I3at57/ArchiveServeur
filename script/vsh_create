@@ -1,0 +1,137 @@
+#!/bin/bash
+if [[ $# -ne 3 ]]; then 
+    echo "Usage: vsh_create <nom_archive> <host> <port>"
+    exit 1
+fi
+
+# Créer un fichier temporaire dans /tmp
+tmp_header=$(mktemp /tmp/vsh_create.XXXXXX)
+tmp_body=$(mktemp /tmp/vsh_create.XXXXXX)
+tmp_archive=$(mktemp /tmp/vsh_create.XXXXXX)
+archive=$1
+host=$2
+port=$3
+
+# Pour créer le header, nous devons d'abord connaitre le nombre de ligne du header. 
+# Pour faire cela, nous allons commencer par créer un fichier header temporaire,
+# contenant les noms de tous dossiers et fichiers qui se trouveront dans l'archive.
+
+# Une ligne comenceant avec "h" indique que la ligne est le "header" pour le dossier,
+# et une ligne comenceant avec "c" indique que la ligne contient le contenu du dossier.
+# Pour l'instant on garde le chemin relatif au fichier pour pouvoir plus tard extraire les information complementaires necessaires (taille, droits ...)
+# On retrouve le "@" pour indiquer la fin d'un dossier.
+# Exemple du header temporaire:
+#
+# h Exemple
+# c Exemple/text.txt
+# c Exemple/dossier
+# c Exemple/fichier
+# @
+#
+
+
+# Pour chaque dossier dans le dossier courant (recursivement)
+while IFS= read -r dossier; do
+
+    # On ajoute le nom du dossier actuel
+    echo h $dossier >> $tmp_header
+
+    # Pour chaque fichier dans le dossier actuel
+    while IFS= read -r fichier; do
+
+        # On ajoute le chemin relatif au fichier
+        if [[ ! -z $fichier ]]; then
+            echo c $fichier  >> $tmp_header
+        fi
+
+    # On utilise "find" a la place de "ls" car find donne chaque resultat sur une nouvelle ligne,
+    # ce qui facilite la manipulation de nom de fichiers contenant des esapces.
+    # -maxdepth 1 permet de ne seulement trouver les fichiers directement contenus dans le dossier
+    # -mindepth 1 permet de ne pas inclure le dossier parent
+    done <<< $(find "$dossier" -maxdepth 1 -mindepth 1)
+
+    echo @ >>$tmp_header
+
+# ~+ donne le chemin de repertoire courant, ainsi "find" donnera les chemins absolues des dossiers
+# -type d permet de ne seulement trouver les dossiers
+done <<< $(find ~+ -type d)
+
+# Trouver la longueur du header, ajouter 2 pour trouver la fin du header (une ligne pour le debut et fin du header, et une ligne vide)
+long_head=$(cat $tmp_header | wc -l)
+fin_head=$((long_head+2))
+
+echo 3:$fin_head >$tmp_archive
+echo >>$tmp_archive
+
+# Contient la fin du body pour l'instant. Cette variable sera incrementée de la longeur de chaque fichier ajouté
+fin_body_actu=$((fin_head+1))
+
+# Maintenant que nous avons identifié tous les fichiers de l'archive, nous pouvons reprendre le header temporaire,
+# chercher les informations complementaires, et ecrire tout cela dans le fichier archive final.
+while IFS="\n" read line; do
+    case ${line:0:1} in
+        h)
+            # Le "cut -d ' ' -f2-" permet de prendre tout ce qui vient apres le premier espace,
+            # meme des fichiers dont les noms contiennent des espaces
+            echo directory $(echo $line | cut -d ' ' -f2-) >> $tmp_archive
+        ;;
+
+        c)
+            fichier=$(echo $line | cut -d ' ' -f2-)
+
+            # On fait un "ls -l" sur le fichier. C'est pour cela qu'il fallait garder le chemin relatif au fichier.
+            # Le "-d" permet de traiter un dossier comme un fichier, c'est a dire ne pas aller chercher le contenu du dossier.
+            ls_l=$(ls -ld "$fichier")
+            
+            droits=$(echo $ls_l | cut -d ' ' -f1)
+            taille=$(echo $ls_l | cut -d ' ' -f5)
+            nom_complet=$(echo $ls_l | cut -d ' ' -f9-)
+
+            # Maintenant que nous avons les infos complementaires du fichiers, nous n'avons seulement besoin de nom,
+            # et non le chemin du fichier.
+            nom=$(basename "$nom_complet")
+
+            
+            if [[ -f $fichier ]]; then
+            # Si c'est un fichier, il faut mettre le contenu du fichier a la fin de l'archive, et mettre les lignes de debut et fin de contenu.
+            # Etant donné que nous n'avons pas fini d'ecrire le debut de l'archive, il faut pour l'instant mettre le body dans un autre fichier temporaire.
+
+                # Si le fichier est vide, le nombre de lignes du fichier est 0
+                if [[ ! -s "$fichier" ]]; then
+                    nb_lignes=0
+                else
+                    # "wc -l" donne le nombre de "\n" dans le fichier, mais cela donne le nombre de ligne - 1
+                    # Par exemple un fichier d'une seule ligne n'aura pas de "\n", donc wc donnera 0, mais nous voulons 1
+                    nb_lignes=$(cat "$fichier" | wc -l)
+                    ((nb_lignes+=1))
+
+                    cat "$fichier" >> $tmp_body
+                    echo >> $tmp_body
+                fi
+
+                echo $nom $droits $taille $fin_body_actu $((nb_lignes))>> $tmp_archive
+
+                # Incrementer la fin du body de la longeur du fichier qui vient d'etre ecrit.
+                ((fin_body_actu+=nb_lignes))
+            else
+            # Sinon, on peut directement ecrire les infos du dossier
+                echo $nom $droits $taille >> $tmp_archive
+            fi
+        ;;
+
+        @)
+            echo @ >> $tmp_archive
+        ;;
+        *)
+            echo error $line
+        ;;
+    esac
+
+done <$tmp_header
+
+# Ajouter le body temporaire a la fin de l'archive
+cat $tmp_body >> $tmp_archive
+
+(echo ecrire-fichier $archive; cat $tmp_archive;) | ncat "$host" "$port"
+
+rm /tmp/vsh_create.*

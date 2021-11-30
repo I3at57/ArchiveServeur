@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# Ce fichier sera le script principal de la commande vsh
+# (Je ne sais pas comment sont implémenté des commandes bash dans la vrai)
+
+# Une des solution proposé est pour chaque mode de créer un script associé:
+#   - vsh_liste
+#   - vsh_create
+#   - vsh_browse
+#   - vsh_extract
+
+# Le script suivant vsh sera donc un 'hub' qui appelle l'un de ces script en fonction des arguments
+
+# Beaucoup de vérifications des arguments
+
+if (( $# <= 3 )) || (( $# > 4 ))
+then
+	echo "Usage 0: vsh_create <mode> <host> <port> <nom_archive>"
+	exit 1
+fi
+
+if ! [[ $1 =~ ^-[a-z]+$ ]]
+then
+	echo "Usage 1: vsh_create <mode> <host> <port> <nom_archive>"
+        exit 1
+fi
+
+if ! [[ $2 =~ ^([0-9]{1,3}.){3}[0-9]{1,3}$ ]]
+then
+	if ! [[ $2 =~ ^localhost$ ]]
+	then
+        	echo "Usage 2: vsh_create <mode> <host> <port> <nom_archive>"
+	        exit 1
+	fi
+fi
+
+if ! [[ $3 =~ ^[0-9]*$ ]]
+then
+	echo "Usage 3: vsh_create <mode> <host> <port> <nom_archive>"
+	exit 1
+fi
+
+echo "C'est ok"
+
+case $1 in
+	-extract)
+		echo "oui"
+		;;
+	-list)
+		echo "oui"
+		;;
+	-create)
+		echo "oui"
+		;;
+	-browse)
+		echo "oui"
+		;;
+	-server)
+		echo "oui"
+		;;
+	*)
+		echo "Error: No mode found"
+		exit 1
+		;;
+esac
