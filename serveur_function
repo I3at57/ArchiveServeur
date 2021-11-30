@@ -10,7 +10,6 @@ if [ -z $1 ]; then
 fi
 
 PORT="$1"
-
 if [ ! -z $2 ]; then
 	LOCATION=$2
 else
@@ -77,6 +76,8 @@ function commande-documentation() {
 	echo documentation/d: $documentation_doc
 	echo echo: $echo_doc
 	echo quit: $qui_doc
+	echo quit-s: $quis_doc
+	echo ecrire-fichier: $ecrire_doc
 }
 function commande-d() {
 	commande-documentation
@@ -88,6 +89,7 @@ function commande-echo() {
 }
 
 
+ecrire_doc="Ajoute les arguments a l'archive présente dans $HOME/.archives"
 function commande-ecrire-fichier() {
 	if [ -z $1 ] ; then echo "Error: No file name found" ; exit 1 ; fi
 	
@@ -99,9 +101,7 @@ function commande-lire-fichier() {
 
 	# Compter le nombre de caracteres à envoyer
 	cat $1 | wc -c
-
 	cat LOCATION/$1
 }
-
 # On accepte et traite les connexions
 accept-loop
