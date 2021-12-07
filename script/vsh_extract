@@ -1,9 +1,10 @@
 #!/bin/bash
 
 # Vérifie la présence des arguments
-if [ -z $1 ] ; then echo "Error: No server name found" ; exit 1 ; fi
-if [ -z $2 ] ; then echo "Error: No port number found" ; exit 1 ; fi
-if [ -z $3 ] ; then echo "Error: No archive name found" ; exit 1 ; fi
+if [[ $# -ne 3 ]]; then 
+    echo "Usage: vsh_create <host> <port> <nom_archive>"
+    exit 1
+fi
 
 # Dans ce documents il y a deux parties, la première va envoer des arguments au serveur pour extraire l'archive
 #

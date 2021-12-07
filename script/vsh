@@ -11,52 +11,65 @@
 
 # Le script suivant vsh sera donc un 'hub' qui appelle l'un de ces script en fonction des arguments
 
-# Beaucoup de vérifications des arguments
-
-if (( $# <= 3 )) || (( $# > 4 ))
+LOCATION=/home/batto/ArchiveServeur/script
+if [ $# == 2 ]
 then
-	echo "Usage 0: vsh_create <mode> <host> <port> <nom_archive>"
+	MODE=$1
+	PORT=$2
+	HOST='NULL'
+elif [ $# == 3 ]
+then
+	MODE=$1
+	HOST=$2
+	PORT=$3
+elif [ $# == 4 ]
+then
+	MODE=$1
+	HOST=$2
+	PORT=$3
+	ARCHIVE=$4
+else
+	echo "Usage 0: vsh <mode> <host> <port> <nom_archive>"
 	exit 1
 fi
 
-if ! [[ $1 =~ ^-[a-z]+$ ]]
+# Beaucoup de vérifications des arguments
+if ! [[ $MODE =~ ^-[a-z]+$ ]]
 then
-	echo "Usage 1: vsh_create <mode> <host> <port> <nom_archive>"
+	echo "Usage 1: vsh <mode> <host> <port> <nom_archive>"
         exit 1
 fi
 
-if ! [[ $2 =~ ^([0-9]{1,3}.){3}[0-9]{1,3}$ ]]
+if ! [[ $PORT =~ ^[0-9]*$ ]]
 then
-	if ! [[ $2 =~ ^localhost$ ]]
-	then
-        	echo "Usage 2: vsh_create <mode> <host> <port> <nom_archive>"
-	        exit 1
-	fi
-fi
-
-if ! [[ $3 =~ ^[0-9]*$ ]]
-then
-	echo "Usage 3: vsh_create <mode> <host> <port> <nom_archive>"
+	echo "Usage 3: vsh <mode> <host> <port> <nom_archive>"
 	exit 1
 fi
 
-echo "C'est ok"
+if ! [[ $HOST =~ ^([0-9]{1,3}.){3}[0-9]{1,3}$ ]] && [ $HOST != 'NULL' ]
+then
+	if ! [[ $HOST =~ ^localhost$ ]]
+	then
+			echo "Usage 2: vsh <mode> <host> <port> <nom_archive>"
+			exit 1
+	fi
+fi
 
-case $1 in
+case $MODE in
 	-extract)
-		echo "oui"
+		$LOCATION/vsh_extract $HOST $PORT $ARCHIVE
 		;;
 	-list)
-		echo "oui"
+		$LOCATION/vsh_list $HOST $PORT
 		;;
 	-create)
-		echo "oui"
+		$LOCATION/vsh_create $HOST $PORT $ARCHIVE
 		;;
 	-browse)
-		echo "oui"
+		$LOCATION/vsh_browse $HOST $PORT $ARCHIVE
 		;;
 	-server)
-		echo "oui"
+		$LOCATION/vsh_server $PORT
 		;;
 	*)
 		echo "Error: No mode found"

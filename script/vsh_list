@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# Ce script va aller chercher un fichier .archivelist
+# Ce fichier se trouve sur le serveur distant dans le même dossier que
+# les archives
+
+######################################################################
+# Vérification des arguments
+
+if [ $# != 2 ] ; then echo "Usage: vsh_list <host> <port>" ; exit 1 ; fi
+
+######################################################################
+# Récupération du fichier depuis le serveur 
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+######################################################################
+# Lecture du fichier
+
+echo ""
+echo "Liste des archives sur le serveur: $1, port: $2"
+echo ""
+while read lines
+do
+	echo " * $lines"
+done < .archivelist
+echo ""

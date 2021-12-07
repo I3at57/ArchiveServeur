@@ -1,6 +1,6 @@
 #!/bin/bash
 if [[ $# -ne 3 ]]; then 
-    echo "Usage: vsh_create <nom_archive> <host> <port>"
+    echo "Usage: vsh_create <host> <port> <nom_archive>"
     exit 1
 fi
 
@@ -8,9 +8,9 @@ fi
 tmp_header=$(mktemp /tmp/vsh_create.XXXXXX)
 tmp_body=$(mktemp /tmp/vsh_create.XXXXXX)
 tmp_archive=$(mktemp /tmp/vsh_create.XXXXXX)
-archive=$1
-host=$2
-port=$3
+archive=$3
+host=$1
+port=$2
 
 # Pour créer le header, nous devons d'abord connaitre le nombre de ligne du header. 
 # Pour faire cela, nous allons commencer par créer un fichier header temporaire,
