@@ -11,64 +11,51 @@
 
 # Le script suivant vsh sera donc un 'hub' qui appelle l'un de ces script en fonction des arguments
 
-if [ $# == 2 ]
-then
-	MODE=$1
-	PORT=$2
-	HOST='NULL'
-elif [ $# == 3 ]
-then
-	MODE=$1
-	HOST=$2
-	PORT=$3
-elif [ $# == 4 ]
-then
-	MODE=$1
-	HOST=$2
-	PORT=$3
-	ARCHIVE=$4
-else
+# $0 donne le chemin relatif du script par rapport au chemin dans lequel ce script a été appelé.
+# realpath $0 donne le chemin absolu du script
+# dirname donne le nom du dossier contenant le fichier / dossier reférencé par le chemmin passé en argument 
+# (ici c'est le scrip vsh, donc cela nous donne le chemin absolu du dossier du projet).
+# En combinant les deux, on peut obtenir le chemin absolu du dossier du projet --> $ROOT.
+
+ROOT=$(dirname $(realpath $0))
+
+if [ $# -lt 1 ] || [ $# -gt 4 ]; then 
 	echo "Usage 0: vsh <mode> <host> <port> <nom_archive>"
 	exit 1
 fi
 
-# Beaucoup de vérifications des arguments
-if ! [[ $MODE =~ ^-[a-z]+$ ]]
-then
-	echo "Usage 1: vsh <mode> <host> <port> <nom_archive>"
-        exit 1
+MODE=$1
+HOST=${2:-"localhost"}
+PORT=${3:-"8080"}
+ARCHIVE=${4:-".archive"}
+
+
+if ! [[ $MODE =~ ^-(list|extract|create|browse|server)$ ]]; then
+	echo ERROR: \"$MODE\" n\'est pas un mode.
+	exit 1
 fi
 
 if ! [[ $PORT =~ ^[0-9]*$ ]]
 then
-	echo "Usage 3: vsh <mode> <host> <port> <nom_archive>"
+	echo ERROR: Le port \"$PORT\" n\'est pas un port valid.
 	exit 1
-fi
-
-if ! [[ $HOST =~ ^([0-9]{1,3}.){3}[0-9]{1,3}$ ]] && [ $HOST != 'NULL' ]
-then
-	if ! [[ $HOST =~ ^localhost$ ]]
-	then
-			echo "Usage 2: vsh <mode> <host> <port> <nom_archive>"
-			exit 1
-	fi
 fi
 
 case $MODE in
 	-extract)
-		script/vsh_extract $HOST $PORT $ARCHIVE
+		$ROOT/script/vsh_extract $HOST $PORT $ARCHIVE
 		;;
 	-list)
-		script/vsh_list $HOST $PORT
+		$ROOT/script/vsh_list $HOST $PORT
 		;;
 	-create)
-		script/vsh_create $HOST $PORT $ARCHIVE
+		$ROOT/script/vsh_create $HOST $PORT $ARCHIVE
 		;;
 	-browse)
-		script/vsh_browse $HOST $PORT $ARCHIVE
+		$ROOT/script/vsh_browse $HOST $PORT $ARCHIVE
 		;;
 	-server)
-		script/vsh_server $PORT
+		$ROOT/script/vsh_server $PORT
 		;;
 	*)
 		echo "Error: No mode found"
