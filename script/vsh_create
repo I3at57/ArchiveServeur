@@ -68,16 +68,21 @@ fin_body_actu=$((fin_head+1))
 
 # Maintenant que nous avons identifié tous les fichiers de l'archive, nous pouvons reprendre le header temporaire,
 # chercher les informations complementaires, et ecrire tout cela dans le fichier archive final.
-while IFS="\n" read line; do
-    case ${line:0:1} in
+while IFS="\n" read ligne_header; do
+    case ${ligne_header:0:1} in
         h)
             # Le "cut -d ' ' -f2-" permet de prendre tout ce qui vient apres le premier espace,
             # meme des fichiers dont les noms contiennent des espaces
-            echo directory $(echo $line | cut -d ' ' -f2-) >> $tmp_archive
+            nom_dossier=$(echo $ligne_header | cut -d ' ' -f2-)
+
+            # Remplacer les "/" par des "\".
+            nom_dossier=$(echo $nom_dossier | sed 's/\//\\/g' )
+
+            echo directory "$nom_dossier" >> $tmp_archive
         ;;
 
         c)
-            fichier=$(echo $line | cut -d ' ' -f2-)
+            fichier=$(echo "$ligne_header" | cut -d ' ' -f2-)
 
             # On fait un "ls -l" sur le fichier. C'est pour cela qu'il fallait garder le chemin relatif au fichier.
             # Le "-d" permet de traiter un dossier comme un fichier, c'est a dire ne pas aller chercher le contenu du dossier.
@@ -123,7 +128,7 @@ while IFS="\n" read line; do
             echo @ >> $tmp_archive
         ;;
         *)
-            echo error $line
+            echo error $ligne_header
         ;;
     esac
 
