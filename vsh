@@ -11,7 +11,6 @@
 
 # Le script suivant vsh sera donc un 'hub' qui appelle l'un de ces script en fonction des arguments
 
-LOCATION=/home/batto/ArchiveServeur/script
 if [ $# == 2 ]
 then
 	MODE=$1
@@ -57,19 +56,19 @@ fi
 
 case $MODE in
 	-extract)
-		$LOCATION/vsh_extract $HOST $PORT $ARCHIVE
+		script/vsh_extract $HOST $PORT $ARCHIVE
 		;;
 	-list)
-		$LOCATION/vsh_list $HOST $PORT
+		script/vsh_list $HOST $PORT
 		;;
 	-create)
-		$LOCATION/vsh_create $HOST $PORT $ARCHIVE
+		script/vsh_create $HOST $PORT $ARCHIVE
 		;;
 	-browse)
-		$LOCATION/vsh_browse $HOST $PORT $ARCHIVE
+		script/vsh_browse $HOST $PORT $ARCHIVE
 		;;
 	-server)
-		$LOCATION/vsh_server $PORT
+		script/vsh_server $PORT
 		;;
 	*)
 		echo "Error: No mode found"
