@@ -24,7 +24,7 @@ trap nettoyage EXIT
 function accept-loop() {
     while true; do
 		echo new connection
-		interaction < "$FIFO" | ncat -l -p "$PORT" > "$FIFO"
+		cat "$FIFO" | interaction | ncat -lp "$PORT" > "$FIFO"
     done
 }
 
@@ -58,37 +58,26 @@ function commande-non-comprise () {
 	echo "Le serveur ne peut pas interpreter cette commande"
 }
 
-documentation_doc="Donne de la documentation sur les commandes possibles."
-function commande-documentation() {
-	echo documentation/d: $documentation_doc
-	echo echo: $echo_doc
-	echo quit: $qui_doc
-	echo quit-s: $quis_doc
-	echo ecrire-fichier: $ecrire_doc
-}
-function commande-d() {
-	commande-documentation
-}
-
-echo_doc="Retourne les arguments donnés."
-function commande-echo() {
-	echo "$*"
-}
-
-
-ecrire_doc="Ajoute les arguments a l'archive présente dans $HOME/.archives"
 function commande-ecrire-fichier() {
 	if [ -z $1 ] ; then echo "Error: No file name found" ; exit 1 ; fi
-	
-	cat > $LOCATION/$1
+
+	read nb_char
+	head -c $nb_char > $LOCATION/$1
 }
 
 function commande-lire-fichier() {
 	if [ -z $1 ] ; then echo "Error: No file name found" ; exit 1 ; fi
 
 	# Compter le nombre de caracteres à envoyer
-	cat $1 | wc -c
-	cat LOCATION/$1
+	cat $LOCATION/$1 | wc -c
+	cat $LOCATION/$1
 }
+
+function commande-list-archives() {
+	archives=$(ls $LOCATION)
+	echo $archives | wc -c
+	echo $archives
+}
+
 # On accepte et traite les connexions
 accept-loop
