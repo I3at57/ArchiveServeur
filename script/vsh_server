@@ -19,7 +19,7 @@ function nettoyage() { rm -f "$FIFO"; }
 trap nettoyage EXIT
 
 # on cree le tube nomme
-[ -e "FIFO" ] || mkfifo "$FIFO"
+[ -e "$FIFO" ] || mkfifo "$FIFO"
 
 function accept-loop() {
     while true; do
