@@ -8,9 +8,9 @@ fi
 tmp_header=$(mktemp /tmp/vsh_create.XXXXXX)
 tmp_body=$(mktemp /tmp/vsh_create.XXXXXX)
 tmp_archive=$(mktemp /tmp/vsh_create.XXXXXX)
-archive=$3
 host=$1
 port=$2
+archive=$3
 
 # Pour créer le header, nous devons d'abord connaitre le nombre de ligne du header. 
 # Pour faire cela, nous allons commencer par créer un fichier header temporaire,
@@ -137,13 +137,13 @@ done <$tmp_header
 # Ajouter le body temporaire a la fin de l'archive
 cat $tmp_body >> $tmp_archive
 
-(
+{
     # Cette premiere ligne indique au server que nous voulons envoyer / ecrire un fichier, avec comme nom $archive
     echo ecrire-fichier $archive
     # Ensuite on envoie la taille / longeur du fichier en caracteres sur la ligne suivante, pour que le serveur puisse savoir quand tout a été envoyé.
     cat $tmp_archive | wc -c
     # Et enfin on envoie le contenu.    
     cat $tmp_archive
-) | ncat "$host" "$port"
+} | ncat "$host" "$port"
 
 rm /tmp/vsh_create.*
