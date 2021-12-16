@@ -184,9 +184,6 @@ header_debut=$(echo $dim_header | cut -d ":" -f1)
 
 root_archive=$(sed "${header_debut}q;d" $archive | cut -d " " -f2-)
 
-# combiner_chemins "/a espaces" "nv_dossier"
-
-
 while true; do
     IFS= read -p "vsh $pwd :> " input
 
