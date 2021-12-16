@@ -1,25 +1,12 @@
 #! /bin/bash
 
 # Ce script implemente un serveur.  
-# Le script doit etre invoque avec l'argument :                                                              
-# PORT   le port sur lequel le serveur attend ses clients  
 
-if [ -z $1 ]; then
-    echo "usage: $(basename $0) <port> [chemin-archive]"
-    exit -1
-fi
+PORT=${1:-"8081"}
+LOCATION=${2:-"$HOME/.archives"}
 
-PORT="$1"
-if [ ! -z $2 ]; then
-	LOCATION=$2
-else
-	LOCATION="$HOME/.archives"
-fi
-
-if ! [ -d $LOCATION ]
-then
-	mkdir $LOCATION
-fi
+# Créer le dossier contenant les archives s'il n'existe pas.
+[ -d $LOCATION ] || mkdir $LOCATION
 
 # Declaration du tube
 FIFO="/tmp/$USER-fifo-$$"
