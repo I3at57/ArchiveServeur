@@ -2,7 +2,7 @@
 
 # Ce script implemente un serveur.  
 
-PORT=${1:-"8081"}
+PORT=${1:-"8080"}
 LOCATION=${2:-"$HOME/.archives"}
 
 # Créer le dossier contenant les archives s'il n'existe pas.
@@ -23,7 +23,7 @@ trap nettoyage EXIT
 
 function accept-loop() {
     while true; do
-		echo new connection
+		echo new connection on "$PORT"
 		cat "$FIFO" | interaction | ncat -lp "$PORT" > "$FIFO"
     done
 }

@@ -1,26 +1,19 @@
 #!/bin/bash
 
-# Ce script va aller chercher un fichier .archivelist
-# Ce fichier se trouve sur le serveur distant dans le même dossier que
-# les archives
+# Declaration du tube
+FIFO="/tmp/$USER-fifo-$$"
 
-######################################################################
-# Vérification des arguments
+[ -e "$FIFO" ] || mkfifo "$FIFO"
 
-if [ $# != 2 ] ; then echo "Usage: vsh_list <host> <port>" ; exit 1 ; fi
+nettoyage () { rm -f "$FIFO"; }
+trap nettoyage EXIT
 
-######################################################################
-# Récupération du fichier depuis le serveur 
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+HOST=${1:-"localhost"}
+PORT=${2:-"8080"}
 
-######################################################################
-# Lecture du fichier
+# Je pense que quand on redirige les IO d'un bloc de code, cela créer un subshell, ce qui veut dire que l'on ne peut pas modifier les variables du script parent,
+# donc on ne peut pas stocker le resultat dans une variable. Ainsi on créer un fichier temporaire ".fichiers" dans lequel on peut mettre le resultat. 
+cat "$FIFO" | { echo list-archives; read line; head -c $line > .fichiers; } | ncat $HOST $PORT > "$FIFO"
 
-echo ""
-echo "Liste des archives sur le serveur: $1, port: $2"
-echo ""
-while read lines
-do
-	echo " * $lines"
-done < .archivelist
-echo ""
+cat .fichiers
+rm .fichiers
