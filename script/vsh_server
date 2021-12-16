@@ -51,7 +51,42 @@ function interaction() {
 }
 
 ###########################################################################
-# Les fonctions serieuses
+# Les fonctions utilitaires
+###########################################################################
+
+function get_contenu_dossier() {
+	archive=$1
+	chemin=${2%/}
+
+	(
+		IFS=
+		read dim_header
+		header_debut=$(echo $dim_header | awk -F ":" '{print $1}')
+		header_fin=$(echo $dim_header | awk -F ":" '{print $2}')
+		root_archive=$(sed "$((header_debut-1))q;d" | cut -d " " -f2-)
+
+		chemin_abs=$root_archive\\$chemin
+		recherche=$(echo directory $chemin_abs | sed 's/\\/\\\\/g')
+		
+		dossier_trouve=false
+		i=3
+		while [ $dossier_trouve == "false" ] && [ $i -lt $header_fin ] && read -r ligne; do
+			if [[ $ligne == $recherche ]]; then dossier_trouve=true; fi
+			((i++))
+		done
+		
+		if [ $dossier_trouve == false ]; then exit 1; fi
+
+		while read -r ligne && [ $ligne != "@" ]; do
+			echo $ligne
+		done
+
+	) < $archive
+
+}
+
+###########################################################################
+# Les fonctions commandes
 ###########################################################################
 
 function commande-non-comprise () {
@@ -78,6 +113,29 @@ function commande-list-archives() {
 	echo $archives | wc -c
 	echo $archives
 }
+
+function commande-ls() {
+	if [ $# -lt 2 ]; then echo "Usage: ls [-(l|a)] chemin"; exit 1; fi
+
+	archive=$LOCATION/$1
+	if [ ! -f $archive ]; then echo "Error: L'archive \"$1\" n'existe pas"; exit 1; fi
+
+	if [[ $2 =~ ^- ]]; then
+		if [ -z $2 ]; then echo "Usage: ls [-(l|a)] chemin"; exit 1; fi
+
+		chemin=$3
+		if [[ $2 =~ l ]]; then ls_l=true; else ls_l=false; fi
+		if [[ $2 =~ a ]]; then ls_a=true; else ls_a=false; fi
+	else
+		chemin=$2
+	fi
+
+
+	# get_contenu_dossier $archive $chemin
+	get_contenu_dossier $archive $chemin
+}
+
+
 
 # On accepte et traite les connexions
 accept-loop
