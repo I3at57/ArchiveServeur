@@ -30,10 +30,10 @@ gerer_input() {
 
             resultat=$(env_rcv_ligne $host $port chemin_existe $archive ${new_pwd#\\})
 
-            if [[ $resultat != "erreur" ]]; then
+            if [[ $resultat == "dossier" ]]; then
                 pwd=$new_pwd
             else
-                echo Le dossier \"$new_pwd\" n\'existe pas !
+                echo Erreur: \"$new_pwd\" n\'est pas un dossier !
             fi
             ;;
 
