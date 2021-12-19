@@ -27,7 +27,7 @@ fi
 MODE=$1
 HOST=${2:-"localhost"}
 PORT=${3:-"8080"}
-ARCHIVE=${4:-".archive"}
+ARCHIVE=${4:-"archive"}
 
 
 if ! [[ $MODE =~ ^-(list|extract|create|browse|server)$ ]]; then
