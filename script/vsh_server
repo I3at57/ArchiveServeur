@@ -56,7 +56,7 @@ function interaction() {
 
 function get_contenu_dossier() {
 	archive=$1
-	chemin=${2%/}
+	chemin=$2
 
 	(
 		IFS=
@@ -66,17 +66,25 @@ function get_contenu_dossier() {
 		root_archive=$(sed "$((header_debut-1))q;d" | cut -d " " -f2-)
 
 		chemin_abs=$root_archive\\$chemin
-		recherche=$(echo directory $chemin_abs | sed 's/\\/\\\\/g')
+		# echo $root_archive
+		chemin_abs=${chemin_abs%\\}
+
+		printf -v recherche 'directory %s' "$chemin_abs"
 		
-		dossier_trouve=false
+		dossier_trouve=False
+
+		# Si le chemin recherché est égal à la racine de l'archive, on sait directement que l'on a deja trouvé.
+		# Et etat donné que l'on doit lire la premiere ligne du header de l'archive pour determiner la racine du header, 
+		# sans faire cette verification, on ne trouverait jamais le dossier.
+		if [ $chemin_abs = $root_archive ]; then dossier_trouve=True; fi
+
 		i=3
-		while [ $dossier_trouve == "false" ] && [ $i -lt $header_fin ] && read -r ligne; do
-			if [[ $ligne == $recherche ]]; then dossier_trouve=true; fi
+		while [ $dossier_trouve = "False" ] && [ $i -lt $header_fin ] && read -r ligne; do
+			if [ $ligne = $recherche ]; then dossier_trouve=True; fi
 			((i++))
 		done
 		
-		if [ $dossier_trouve == false ]; then exit 1; fi
-
+		if [ $dossier_trouve == False ]; then exit 1; fi
 		while read -r ligne && [ $ligne != "@" ]; do
 			echo $ligne
 		done
@@ -138,25 +146,47 @@ function commande-list-archives() {
 }
 
 function commande-ls() {
-	if [ $# -lt 2 ]; then echo "Usage: ls [-(l|a)] chemin"; exit 1; fi
+	if [ $# -lt 1 ]; then echo "Usage: ls [-(l|a)] chemin"; exit 1; fi
 
 	archive=$LOCATION/$1
 	if [ ! -f $archive ]; then echo "Error: L'archive \"$1\" n'existe pas"; exit 1; fi
+
+	ls_a=False
+	ls_l=False
 
 	if [[ $2 =~ ^- ]]; then
 		if [ -z $2 ]; then echo "Usage: ls [-(l|a)] chemin"; exit 1; fi
 
 		chemin=$3
-		if [[ $2 =~ l ]]; then ls_l=true; else ls_l=false; fi
-		if [[ $2 =~ a ]]; then ls_a=true; else ls_a=false; fi
+		if [[ $2 =~ l ]]; then ls_l=True; fi
+		if [[ $2 =~ a ]]; then ls_a=True; fi
 	else
 		chemin=$2
 	fi
 
 	while IFS= read -r ligne; do
-		if 
-	done <<< get_contenu_dossier $archive $chemin
-	
+		nom=$(echo $ligne | awk '{print $1}')
+
+		# Si il n'y a pas l'option "-a" et le fichier / dossier est caché, ne rien faire
+		if [ $ls_a == False ] && [[ $nom =~ ^[.].* ]]; then
+			continue
+		fi
+		
+		droits=$(echo $ligne | awk '{print $2}')
+
+		if [ $ls_l == True ]; then
+			taille=$(echo $ligne | awk '{print $3}')
+			printf "%s %s %s \n" $droits $taille $nom
+		else
+			# Si c'est un dossier, il faut ajouter un "\" à la fin
+			if [[ $droits =~ ^d.* ]]; then
+				printf "%s\\ " $nom
+			else
+				printf "%s " $nom
+			fi
+		fi
+
+	done <<< $(get_contenu_dossier $archive $chemin) | column -t
 }
 
 
