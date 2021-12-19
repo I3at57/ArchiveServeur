@@ -1,62 +1,44 @@
 #!/bin/bash
 
+ROOT=$(dirname $(realpath $0))
+source $ROOT/utils
+
 # Variables globales. Pas strictement necessaire, mais aide pour la lisibilité
 archive=""
 pwd=""
-root_archive=""
-header_debut=""
 
 gerer_input() {
     if [[ -z $1 ]]; then return; fi
     cmd=$1
+    shift
     case $cmd in
         pwd)
             echo $pwd
             ;;
 
         ls)
-            # Obtenir le contenu du dossier
-            contenu=$(get_contenu_dossier "$pwd")
-
-            # echo "$contenu"
-            resultats=""
-            while IFS= read ligne; do
-                # Etant donné que les fichiers peuvent contenirs des espaces, on ne connait pas la position du mot contentant les droits
-                # Si c'est un dossier, on sait que les droits seront à l'avant dernier mot. On peut ensuite regarder si ce "mot" commence par un "d".
-                droits_si_dossier=$(echo $ligne | rev | cut -d " " -f2 | rev)
-                if [[ $droits_si_dossier =~ ^d ]]; then
-                # Si c'est le cas, on a un dossier
-                    nom=$(echo $ligne | rev | cut -d " " -f3- | rev)/ # Ajouter "/" a la fin pour montrer que c'est un dossier
-                else
-                # Sinon, on a un fichier
-                    nom=$(echo $ligne | rev | cut -d " " -f5- | rev)
-                fi 
-
-                # Si le nom contient un espace, il faut l'entourer de "".
-                if [[ $nom =~ \  ]]; then
-                    resultats="$resultats \"$nom\""
-                else
-                    resultats="$resultats  $nom"
-                fi
-            done <<< "$contenu"
-
-            echo $resultats
+            dossier_recherche=$(combiner_chemins "$pwd" "$2")
+            dossier_recherche=${dossier_recherche#\\}
+            env_rcv_requete $host $port ls $archive $1 $dossier_recherche
             ;;
         
         cd)
-            if [[ -z $2 ]]; then echo "Usage: cd <directory>"; return; fi
+            if [[ -z $1 ]]; then echo "Usage: cd <directory>"; return; fi
 
             # Prendre le chemin actuel et essayer d'y ajouter le chemin entré par l'utilisateur. 
-            # Si cela donne un code 1, cela indique que le dossier n'existe pas.
-            if new_pwd=$(combiner_chemins "$pwd" "$2"); then
-                pwd=$new_pwd    
+            new_pwd=$(combiner_chemins "$pwd" "$1")
+
+            resultat=$(env_rcv_ligne $host $port chemin_existe $archive ${new_pwd#\\})
+
+            if [[ $resultat != "erreur" ]]; then
+                pwd=$new_pwd
             else
-                echo Le dossier $new_pwd n\'existe pas !
+                echo Le dossier \"$new_pwd\" n\'existe pas !
             fi
             ;;
 
         cat)
-            echo cat
+            # env_rcv_requete $host $port lire-fichier $1
             ;;
 
         rm)
@@ -76,72 +58,20 @@ gerer_input() {
     esac
 }
 
-get_contenu_dossier() {
-    recherche=$(echo $root_archive/$1 | tr -s "/")
-    recherche=${recherche%/}
-
-    read dim_header < $archive
-
-    # Il faut redéterminer le nombre de ligne du header au cas où des fichiers ont été ajoutés ou retirés.
-    header_fin=$(echo $dim_header | cut -d ":" -f2)
-
-    dossier_trouve=false
-    nb_ligne=0
-    while IFS= read ligne; do
-        ((nb_ligne++))
-
-        # Si le dossier a été trouvé
-        if [[ $dossier_trouve == true ]]; then
-            # Si c'est le delimiteur de fin de dossier, on quitte la fonction
-            if [[ $ligne == "@" ]]; then
-
-                # Code retour 0, tout s'est bien passé
-                return 0
-            fi
-
-            # Imprimer la ligne sur stdout
-            echo $ligne
-            continue
-        fi
-
-        # Seulement lire le header (s'arreter si on depasse le header)
-        if [[ nb_ligne -gt header_fin ]]; then break; fi
-
-        # Si nous sommes avant le debut du header, ne rien faire.
-        # Pas strictement nécessaire, car dans tout les cas ces lignes ne seront pas traités
-        # car on cherche celles commenceant avec "directory".
-        if [[ nb_ligne -lt header_debut ]]; then continue; fi
-        
-        # On veut trouver les lignes comenceants avec "directory " (l'espace est inclu, d'où le "\ ")
-        if [[ $ligne =~ ^directory\  ]]; then
-
-            # Le la ligne et extraire le chemin du dossier
-            dossier=$(echo $ligne | cut -d " " -f2-)
-
-            if [[ $dossier == $recherche ]]; then
-                dossier_trouve=true
-            fi
-        fi
-    done < $archive
-
-    return 1 # On a regardé toute les lignes du header sans trouver le dossier, on quitte avec 1 (pas success)
-}
-
-# Tente de combiner des chemins ensemble
-# Si le dossier n'existe pas, on return 1
+# Combine deux chemins ensemble
 combiner_chemins(){
-    chemin="/"
+    chemin='\'
+
+    # Tant qu'il reste des chemins à combiner
     while [[ ! -z $1 ]]; do
 
-        # Si on rencontre un chemin comenceant avec un "/", on recommence a la racine
-        if [[ $1 =~ ^/ ]]; then
-            chemin="/"
+        # Si on rencontre un chemin comenceant avec un "\", on recommence a la racine
+        if [[ $1 =~ '^\.*' ]]; then
+            chemin='\'
         fi
-
-        # Separer les sous-dossiers en une liste
-        IFS='/' read -ra dossiers <<< "$1"
         
-        for dossier in "${dossiers[@]}"; do
+        # Pour chaque sous-dossier du chemin
+        for dossier in $(echo $1 | sed -e 's/\\/ /g'); do
             case $dossier in
                 .)
                     # Rien faire
@@ -149,46 +79,32 @@ combiner_chemins(){
                     ;;
                 ..)
                     # Retirer le dernier dossier du chemin
-                    chemin=${chemin%/*}
-                    if [[ -z $chemin ]]; then chemin="/"; fi
+                    chemin=${chemin%\\*}
+                    if [[ -z $chemin ]]; then chemin=\\; fi
                     ;;
                 *)  
-                    chemin=$chemin/$dossier
+                    chemin=$chemin\\$dossier
                     ;;
             esac
-            chemin=$(echo $chemin | tr -s /)
-
-            # Il faut capturer la sortie de "get_contenu_dossier"
-            if ! a=$(get_contenu_dossier "$chemin"); then
-                return 1
-            fi
         done
+        
         shift
     done
-    chemin=${chemin%/}
-    chemin=$(echo $chemin | tr -s /)
+    chemin=${chemin%\\}
+    chemin=$(echo $chemin | tr -s '\\')
 
-    if [[ -z $chemin ]]; then chemin="/"; fi
+    if [[ -z $chemin ]]; then chemin=\\; fi
 
     echo $chemin
 }
 
-if [[ -z $1 ]]; then echo "Usage: vsh_browse <nom_archive>"; exit 1; fi
-if [[ ! -f $1 ]]; then echo "'$1' n'est pas un fichier !"; exit 1; fi
+host=${1:-"localhost"}
+port=${2:-"8080"}
+archive=${3:-"archive"}
 
-archive=$1
-pwd="/"
-
-read dim_header < $archive
-header_debut=$(echo $dim_header | cut -d ":" -f1)
-
-root_archive=$(sed "${header_debut}q;d" $archive | cut -d " " -f2-)
+pwd='\'
 
 while true; do
-    IFS= read -p "vsh $pwd :> " input
-
-    # C'est moche, mais c'est la seule facon que j'ai trouvé pour permet à l'utilisateur
-    # d'entrer des arguments contenant des espaces en utilisant des "".
-    # Bash est bizarre ...
-    eval "gerer_input $input"
+    IFS= read -p "vsh $pwd :> " -r input
+    gerer_input $input
 done
