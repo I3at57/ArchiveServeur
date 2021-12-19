@@ -21,3 +21,19 @@ function ecrire_fichier() {
 
     { echo "ecrire-fichier $nom_fichier"; cat $source_fichier | wc -c; cat $source_fichier; } | ncat $HOST $PORT
 }
+
+# Fonction pour envoyer une requete au serveur, puis recevoir la réponse
+function env_rcv_requete() {
+    FIFO="/tmp/$USER-fifo-$$"
+    [ -e "$FIFO" ] || mkfifo "$FIFO"
+    trap "rm -f $FIFO" EXIT
+
+    HOST=${1:-"localhost"}
+    PORT=${2:-"8080"}
+    shift 2
+    
+    args=$*
+
+    cat "$FIFO" | { IFS= ; echo "$args"; read nb_carac; head -c $nb_carac > .tmp; } | ncat $HOST $PORT > "$FIFO"
+    cat .tmp; rm .tmp
+}
