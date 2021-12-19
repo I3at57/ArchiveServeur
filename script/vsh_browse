@@ -38,7 +38,14 @@ gerer_input() {
             ;;
 
         cat)
-            # env_rcv_requete $host $port lire-fichier $1
+            chemin=$(combiner_chemins "$pwd" "$1")
+            resultat=$(env_rcv_ligne $host $port chemin_existe $archive ${chemin#\\})
+
+            if [[ $resultat != "fichier" ]]; then 
+                echo "Erreur: \"$chemin\" n'est pas un fichier"
+                return
+            fi
+            env_rcv_requete $host $port cat $archive $chemin
             ;;
 
         rm)

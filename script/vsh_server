@@ -213,7 +213,39 @@ function commande-chemin_existe() {
 
 }
 
+function commande-cat() {
+	archive=$LOCATION/$1
 
+	# On s'assure qu'il n'y a pas de "\" à la fin du chemin, ni au début
+	chemin=${2%\\}
+	chemin=${chemin#\\}
+
+	dossier_parent=${chemin%\\*}
+	if [[ $dossier_parent == $chemin ]]; then dossier_parent=""; fi
+
+	nom_fichier=${chemin#"$dossier_parent\\"}
+
+	debut_contenu=0
+	longeur_contenu=0
+
+	while IFS= read -r ligne; do
+		nom=$(echo $ligne | awk '{print $1}')
+		droits=$(echo $ligne | awk '{print $2}')
+		if [[ $droits =~ ^d.* ]]; then continue; fi
+		if [[ $nom == $nom_fichier ]]; then 
+			debut_contenu=$(echo $ligne | awk '{print $4}')
+			longeur_contenu=$(echo $ligne | awk '{print $5}')
+			break
+		fi
+	done <<< $(get_contenu_dossier $archive $dossier_parent)
+
+	if [ $debut_contenu = 0 ]; then echo 0; exit; fi
+
+	contenu=$(cat $archive | tail +$debut_contenu | head -$longeur_contenu )
+
+	echo -e "$contenu" | wc -c
+	echo -e "$contenu"
+}
 
 # On accepte et traite les connexions
 accept-loop
