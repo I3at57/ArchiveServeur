@@ -92,29 +92,6 @@ function get_contenu_dossier() {
 	) < $archive
 }
 
-function dossier_existe() {
-	archive=$1
-	chemin=${2%/}
-
-	(
-		IFS=
-		read dim_header
-		header_debut=$(echo $dim_header | awk -F ":" '{print $1}')
-		header_fin=$(echo $dim_header | awk -F ":" '{print $2}')
-		root_archive=$(sed "$((header_debut-1))q;d" | cut -d " " -f2-)
-
-		chemin_abs=$root_archive\\$chemin
-		recherche=$(echo directory $chemin_abs | sed 's/\\/\\\\/g')
-		
-		i=3
-		while [ $i -lt $header_fin ] && read -r ligne; do
-			if [[ $ligne == $recherche ]]; then exit 0; fi
-			((i++))
-		done
-
-		exit 1
-	) < $archive
-}
 
 ###########################################################################
 # Les fonctions commandes
