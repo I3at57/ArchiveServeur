@@ -68,7 +68,7 @@ fin_body_actu=$((fin_head+1))
 
 # Maintenant que nous avons identifié tous les fichiers de l'archive, nous pouvons reprendre le header temporaire,
 # chercher les informations complementaires, et ecrire tout cela dans le fichier archive final.
-while IFS="\n" read ligne_header; do
+while IFS= read ligne_header; do
     case ${ligne_header:0:1} in
         h)
             # Le "cut -d ' ' -f2-" permet de prendre tout ce qui vient apres le premier espace,
