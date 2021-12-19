@@ -117,8 +117,7 @@ function commande-lire-fichier() {
 }
 
 function commande-list-archives() {
-	archives=$(ls $LOCATION)
-	echo $archives | wc -c
+	archives=$(ls -A $LOCATION)
 	echo $archives
 }
 
