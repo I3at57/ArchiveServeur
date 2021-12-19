@@ -41,7 +41,7 @@ function accept-loop() {
 
 # Cette fonction va récupérer les arguments et executer la commande choisie
 function interaction() {
-	read cmd args || exit -1
+	read -r cmd args || exit -1
 	fun="commande-$cmd"
 	if [ "$(type -t $fun)" = "function" ]; then
 		cat | $fun $args
@@ -190,6 +190,50 @@ function commande-ls() {
 }
 
 
+# Cette fonction permet au client de déterminer si un chemin donné existe dans une archive, et si c'est le cas, indique si cela est un dossier ou un fichier.
+function commande-chemin_existe() {
+	archive=$LOCATION/$1
+
+	# On s'assure qu'il n'y a pas de "\" à la fin du chemin
+	chemin=${2%\\}
+
+	# On retire la derniere partie du chemin. On va tenter de trouver le dossier parent du chemin recherché. 
+	# Cela rendra la distinction entre dossier et fichier plus facile plus tard.
+	chemin_parent=${chemin%\\*} 
+
+	# Si le chemin du dossier parent est egal au chemin du fichier, 
+	# cela signifie que la derniere partie du chemin n'a pas pu etre correctement retiré
+	if [ $chemin_parent = $chemin ]; then chemin_parent=""; fi
+	nom_fichier=${chemin#"$chemin_parent\\"}
+
+	resultats=$(get_contenu_dossier $archive $chemin_parent)
+
+	if [ ! $? = 0 ]; then echo erreur; exit; fi
+
+	while IFS= read -r ligne; do
+		nom=$(echo $ligne | awk '{print $1}')
+		if [[ $nom != $nom_fichier ]]; then continue; fi
+
+		droits=$(echo $ligne | awk '{print $2}')
+
+		# Si c'est un dossier, on imprime "dossier"
+		if [[ $droits =~ ^d.* ]]; then echo "dossier"; exit; fi
+
+		# Sinon on imprime "fichier"
+		echo "fichier"; exit
+
+	done <<< "$resultats"
+
+	# Si jamais on arrive ici, c'est que le fichier/dossier recherché n'existe pas
+	# Donc on imprime "erreur"
+	echo erreur
+
+}
+
+
 
 # On accepte et traite les connexions
 accept-loop
+
+
+# chemin_existe archive dossier_test
