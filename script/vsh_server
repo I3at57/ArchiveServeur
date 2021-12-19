@@ -177,6 +177,9 @@ function commande-chemin_existe() {
 	# On s'assure qu'il n'y a pas de "\" à la fin du chemin
 	chemin=${2%\\}
 
+	# Si le chemin est vide, on est a la racine
+	if [ -z $chemin ]; then echo "dossier"; exit 0; fi
+
 	# On retire la derniere partie du chemin. On va tenter de trouver le dossier parent du chemin recherché. 
 	# Cela rendra la distinction entre dossier et fichier plus facile plus tard.
 	chemin_parent=${chemin%\\*} 
