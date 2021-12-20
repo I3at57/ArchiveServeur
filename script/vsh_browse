@@ -59,8 +59,11 @@ gerer_input() {
         mkdir)
             echo mkdir
             ;;
+        exit)
+            exit
+            ;;
         *)
-            echo $cmd: "Commande invalide"
+            echo "Erreur: \"$cmd\" n'est pas une commande valide. "
             ;;
     esac
 }
