@@ -74,9 +74,8 @@ combiner_chemins(){
 
     # Tant qu'il reste des chemins à combiner
     while [[ ! -z $1 ]]; do
-
         # Si on rencontre un chemin comenceant avec un "\", on recommence a la racine
-        if [[ $1 =~ '^\.*' ]]; then
+        if [[ "$1" == \\* ]]; then
             chemin='\'
         fi
         
