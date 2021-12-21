@@ -49,7 +49,8 @@ gerer_input() {
             ;;
 
         rm)
-            echo rm
+            chemin=$(combiner_chemins "$pwd" "$1")
+            echo rm $archive $chemin | ncat $host $port
             ;;
 
         touch)
