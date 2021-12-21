@@ -76,9 +76,9 @@ while IFS= read ligne_header; do
             nom_dossier=$(echo $ligne_header | cut -d ' ' -f2-)
 
             # Remplacer les "/" par des "\".
-            nom_dossier=$(echo $nom_dossier | sed 's/\//\\/g' )
+            nom_dossier=$(echo $nom_dossier | sed 's/\//\\/g' | sed 's/ /_/g' )
 
-            echo directory "$nom_dossier" | sed 's/ /_/g' >> $tmp_archive
+            echo directory "$nom_dossier" >> $tmp_archive
         ;;
 
         c)
