@@ -84,7 +84,7 @@ function get_contenu_dossier() {
 			((i++))
 		done
 		
-		if [ $dossier_trouve == False ]; then exit 1; fi
+		if [ $dossier_trouve == False ]; then echo erreur >> a; exit 1; fi
 		while read -r ligne && [ $ligne != "@" ]; do
 			echo $ligne
 		done
@@ -92,6 +92,44 @@ function get_contenu_dossier() {
 	) < $archive
 }
 
+function chemin_existe(){
+	archive=$1
+	chemin=$2
+	
+	# Si le chemin est vide, on est a la racine
+	if [ -z $chemin ]; then echo "dossier"; exit 0; fi
+
+	# On retire la derniere partie du chemin. On va tenter de trouver le dossier parent du chemin recherché. 
+	# Cela rendra la distinction entre dossier et fichier plus facile plus tard.
+	chemin_parent=${chemin%\\*} 
+
+	# Si le chemin du dossier parent est egal au chemin du fichier, 
+	# cela signifie que la derniere partie du chemin n'a pas pu etre correctement retiré
+	if [ $chemin_parent = $chemin ]; then chemin_parent=""; fi
+	nom_fichier=${chemin#"$chemin_parent\\"}
+
+	resultats=$(get_contenu_dossier $archive $chemin_parent)
+
+	if [ ! $? = 0 ]; then echo erreur; exit; fi
+
+	while IFS= read -r ligne; do
+		nom=$(echo $ligne | awk '{print $1}')
+		if [[ $nom != $nom_fichier ]]; then continue; fi
+
+		droits=$(echo $ligne | awk '{print $2}')
+
+		# Si c'est un dossier, on imprime "dossier"
+		if [[ $droits =~ ^d.* ]]; then echo "dossier"; exit; fi
+
+		# Sinon on imprime "fichier"
+		echo "fichier"; exit
+
+	done <<< "$resultats"
+
+	# Si jamais on arrive ici, c'est que le fichier/dossier recherché n'existe pas
+	# Donc on imprime "erreur"
+	echo erreur
+}
 
 ###########################################################################
 # Les fonctions commandes
@@ -177,40 +215,7 @@ function commande-chemin_existe() {
 	# On s'assure qu'il n'y a pas de "\" à la fin du chemin
 	chemin=${2%\\}
 
-	# Si le chemin est vide, on est a la racine
-	if [ -z $chemin ]; then echo "dossier"; exit 0; fi
-
-	# On retire la derniere partie du chemin. On va tenter de trouver le dossier parent du chemin recherché. 
-	# Cela rendra la distinction entre dossier et fichier plus facile plus tard.
-	chemin_parent=${chemin%\\*} 
-
-	# Si le chemin du dossier parent est egal au chemin du fichier, 
-	# cela signifie que la derniere partie du chemin n'a pas pu etre correctement retiré
-	if [ $chemin_parent = $chemin ]; then chemin_parent=""; fi
-	nom_fichier=${chemin#"$chemin_parent\\"}
-
-	resultats=$(get_contenu_dossier $archive $chemin_parent)
-
-	if [ ! $? = 0 ]; then echo erreur; exit; fi
-
-	while IFS= read -r ligne; do
-		nom=$(echo $ligne | awk '{print $1}')
-		if [[ $nom != $nom_fichier ]]; then continue; fi
-
-		droits=$(echo $ligne | awk '{print $2}')
-
-		# Si c'est un dossier, on imprime "dossier"
-		if [[ $droits =~ ^d.* ]]; then echo "dossier"; exit; fi
-
-		# Sinon on imprime "fichier"
-		echo "fichier"; exit
-
-	done <<< "$resultats"
-
-	# Si jamais on arrive ici, c'est que le fichier/dossier recherché n'existe pas
-	# Donc on imprime "erreur"
-	echo erreur
-
+	chemin_existe $archive $chemin
 }
 
 function commande-cat() {
@@ -247,8 +252,21 @@ function commande-cat() {
 	echo -e "$contenu"
 }
 
+function commande-rm(){
+	archive=$LOCATION/$1
+	chemin=${2%\\}
+	chemin=${chemin#\\}
+
+	
+
+	header_avant_suppression=""
+	header_apres_suppression=""
+
+	contenu_avant_suppresion=""
+	contenu_apres_suppresion=""
+
+
+}
+
 # On accepte et traite les connexions
 accept-loop
-
-
-# chemin_existe archive dossier_test
