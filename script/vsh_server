@@ -365,7 +365,6 @@ function commande-rm(){
 					if [[ "$ligne" == "@" ]]; then break; fi
 
 					nom=$(echo "$ligne" | awk '{print $1}')
-					echo $nom >> a
 					droits=$(echo "$ligne" | awk '{print $2}')
 					if [[ "$droits" =~ ^-.* ]]; then
 						debut=$(echo "$ligne" | awk '{print $4}')
