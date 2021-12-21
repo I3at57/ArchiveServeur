@@ -10,16 +10,13 @@ LOCATION=${2:-"$HOME/.archives"}
 
 # Declaration du tube
 FIFO="/tmp/$USER-fifo-$$"
+# on cree le tube nomme
+[ -e "$FIFO" ] || mkfifo "$FIFO"
 
 # Il faut detruire le tube quand le serveur termine pour eviter de
 # polluer /tmp.  On utilise pour cela une instruction trap pour etre sur de
 # nettoyer meme si le serveur est interrompu par un signal.
-
-function nettoyage() { rm -f "$FIFO"; }
-trap nettoyage EXIT
-
-# on cree le tube nomme
-[ -e "$FIFO" ] || mkfifo "$FIFO"
+trap "rm -f \"$FIFO\"" EXIT
 
 function accept-loop() {
     while true; do
