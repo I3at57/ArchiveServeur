@@ -25,36 +25,34 @@ if [ $# -lt 1 ] || [ $# -gt 4 ]; then
 fi
 
 MODE=$1
-HOST=${2:-"localhost"}
-PORT=${3:-"8080"}
-ARCHIVE=${4:-"archive"}
-
-
-if ! [[ $MODE =~ ^-(list|extract|create|browse|server|help)$ ]]; then
-	echo ERROR: \"$MODE\" n\'est pas un mode.
-	exit 1
-fi
-
-if ! [[ $PORT =~ ^[0-9]*$ ]]
-then
-	echo ERROR: Le port \"$PORT\" n\'est pas un port valid.
-	exit 1
-fi
 
 case $MODE in
 	-extract)
+		HOST=${2:-"localhost"}
+		PORT=${3:-"8080"}
+		ARCHIVE=${4:-"archive"}
 		$ROOT/script/vsh_extract $HOST $PORT $ARCHIVE
 		;;
 	-list)
+		HOST=${2:-"localhost"}
+		PORT=${3:-"8080"}
+		ARCHIVE=${4:-"archive"}
 		$ROOT/script/vsh_list $HOST $PORT
 		;;
 	-create)
+		HOST=${2:-"localhost"}
+		PORT=${3:-"8080"}
+		ARCHIVE=${4:-"archive"}
 		$ROOT/script/vsh_create $HOST $PORT $ARCHIVE
 		;;
 	-browse)
+		HOST=${2:-"localhost"}
+		PORT=${3:-"8080"}
+		ARCHIVE=${4:-"archive"}
 		$ROOT/script/vsh_browse $HOST $PORT $ARCHIVE
 		;;
 	-server)
+		PORT=${2:-"8080"}
 		$ROOT/script/vsh_server $PORT
 		;;
 	-help)
