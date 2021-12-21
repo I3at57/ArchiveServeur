@@ -56,37 +56,27 @@ function interaction() {
 
 function get_contenu_dossier() {
 	archive=$1
-	chemin=$2
+	chemin_abs=$2
 
+	root_archive=$(get_chemin_abs $archive)
 	(
 		IFS=
 		read dim_header
 		header_debut=$(echo $dim_header | awk -F ":" '{print $1}')
 		header_fin=$(echo $dim_header | awk -F ":" '{print $2}')
-		root_archive=$(sed "$((header_debut-1))q;d" | cut -d " " -f2-)
-
-		chemin_abs=$root_archive\\$chemin
-		# echo $root_archive
-		chemin_abs=${chemin_abs%\\}
 
 		printf -v recherche 'directory %s' "$chemin_abs"
-		
 		dossier_trouve=False
 
-		# Si le chemin recherché est égal à la racine de l'archive, on sait directement que l'on a deja trouvé.
-		# Et etat donné que l'on doit lire la premiere ligne du header de l'archive pour determiner la racine du header, 
-		# sans faire cette verification, on ne trouverait jamais le dossier.
-		if [ $chemin_abs = $root_archive ]; then dossier_trouve=True; fi
-
-		i=3
-		while [ $dossier_trouve = "False" ] && [ $i -lt $header_fin ] && read -r ligne; do
-			if [ $ligne = $recherche ]; then dossier_trouve=True; fi
+		i=2
+		while [[ $dossier_trouve == "False" ]] && [ $i -lt $header_fin ] && read -r ligne; do
+			if [[ "$ligne" == "$recherche" ]]; then dossier_trouve=True; fi
 			((i++))
 		done
 		
-		if [ $dossier_trouve == False ]; then echo erreur >> a; exit 1; fi
-		while read -r ligne && [ $ligne != "@" ]; do
-			echo $ligne
+		if [[ $dossier_trouve == False ]]; then echo erreur >> a; exit 1; fi
+		while read -r ligne && [[ $ligne != "@" ]]; do
+			echo "$ligne"
 		done
 
 	) < $archive
@@ -94,19 +84,16 @@ function get_contenu_dossier() {
 
 function chemin_existe(){
 	archive=$1
-	chemin=$2
-	
-	# Si le chemin est vide, on est a la racine
-	if [ -z $chemin ]; then echo "dossier"; exit 0; fi
+	chemin_abs=$2
+
+	root_archive=$(get_chemin_abs $archive)
+	if [[ "$chemin_abs" == "$root_archive" ]]; then echo "dossier"; exit 0; fi
 
 	# On retire la derniere partie du chemin. On va tenter de trouver le dossier parent du chemin recherché. 
 	# Cela rendra la distinction entre dossier et fichier plus facile plus tard.
-	chemin_parent=${chemin%\\*} 
+	chemin_parent=$(get_chemin_parent "$chemin_abs")
 
-	# Si le chemin du dossier parent est egal au chemin du fichier, 
-	# cela signifie que la derniere partie du chemin n'a pas pu etre correctement retiré
-	if [ $chemin_parent = $chemin ]; then chemin_parent=""; fi
-	nom_fichier=${chemin#"$chemin_parent\\"}
+	nom_fichier=${chemin_abs#"$chemin_parent\\"}
 
 	resultats=$(get_contenu_dossier $archive $chemin_parent)
 
@@ -129,6 +116,32 @@ function chemin_existe(){
 	# Si jamais on arrive ici, c'est que le fichier/dossier recherché n'existe pas
 	# Donc on imprime "erreur"
 	echo erreur
+}
+
+function get_chemin_parent(){
+	chemin=$1
+	
+	chemin_parent=${chemin%\\*}
+	if [[ $chemin_parent == $chemin ]]; then 
+		echo ""
+	else
+		echo $chemin_parent
+	fi
+}
+
+function get_chemin_abs() {
+	archive=$1
+	chemin=$2
+
+	{
+		IFS=
+		read -r dim_header
+		header_debut=$(echo $dim_header | awk -F ":" '{print $1}')
+		root_archive=$(sed "$((header_debut-1))q;d" | cut -d " " -f2-)
+		chemin_abs=$root_archive\\$chemin
+		chemin_abs=${chemin_abs%\\}
+	} < $archive
+	echo $chemin_abs
 }
 
 ###########################################################################
@@ -178,6 +191,8 @@ function commande-ls() {
 		chemin=$2
 	fi
 
+	chemin_abs=$(get_chemin_abs "$archive" "$chemin")
+
 	resultat=$(
 		while IFS= read -r ligne; do
 			nom=$(echo $ligne | awk '{print $1}')
@@ -201,12 +216,11 @@ function commande-ls() {
 				fi
 			fi
 
-		done <<< $(get_contenu_dossier $archive $chemin) | column -t
+		done <<< $(get_contenu_dossier $archive $chemin_abs) | column -t
 	)
 	echo -e "$resultat" | wc -c
 	echo -e "$resultat"
 }
-
 
 # Cette fonction permet au client de déterminer si un chemin donné existe dans une archive, et si c'est le cas, indique si cela est un dossier ou un fichier.
 function commande-chemin_existe() {
@@ -214,21 +228,21 @@ function commande-chemin_existe() {
 
 	# On s'assure qu'il n'y a pas de "\" à la fin du chemin
 	chemin=${2%\\}
+	chemin_abs=$(get_chemin_abs $archive "$chemin")
 
-	chemin_existe $archive $chemin
+	chemin_existe $archive "$chemin_abs"
 }
 
 function commande-cat() {
 	archive=$LOCATION/$1
 
-	# On s'assure qu'il n'y a pas de "\" à la fin du chemin, ni au début
+	# On s'assure qu'il n'y a pas de "\" à la fin du chemin
 	chemin=${2%\\}
-	chemin=${chemin#\\}
+	chemin_abs=$(get_chemin_abs "$archive" "$chemin")
 
-	dossier_parent=${chemin%\\*}
-	if [[ $dossier_parent == $chemin ]]; then dossier_parent=""; fi
+	dossier_parent=$(get_chemin_parent "$chemin_abs")
 
-	nom_fichier=${chemin#"$dossier_parent\\"}
+	nom_fichier=${chemin_abs#"$dossier_parent\\"}
 
 	debut_contenu=0
 	longeur_contenu=0
@@ -257,15 +271,37 @@ function commande-rm(){
 	chemin=${2%\\}
 	chemin=${chemin#\\}
 
-	
-
 	header_avant_suppression=""
 	header_apres_suppression=""
 
 	contenu_avant_suppresion=""
 	contenu_apres_suppresion=""
 
+	nb_lignes_header_supprime=0
+	nb_lignes_contenu_supprime=0
 
+	type=$(chemin_existe $archive $chemin)
+	if [ $type = "erreur" ]; then exit 1; fi
+	> a
+	(
+		if [ $type = "fichier" ]; then
+			nb_lignes_header_supprime=1
+
+			# On trouve le dossier parent
+			chemin_parent=$(get_chemin_parent "$chemin")
+			nom_fichier=${chemin#"$chemin_parent\\"}
+
+			printf -v recherche 'directory %s' "$chemin_parent"
+			echo "$recherche" >> a
+
+			while IFS= read -r ligne && [[ ! "$ligne" == "$recherche"  ]]; do
+				echo "$ligne" >> a
+				printf -v header_avant_suppression '%s%s\n' "$header_avant_suppression" "$ligne"
+			done
+		else
+			:
+		fi
+	) < $archive
 }
 
 # On accepte et traite les connexions
