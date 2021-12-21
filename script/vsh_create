@@ -147,3 +147,4 @@ cat $tmp_body >> $tmp_archive
 } | ncat "$host" "$port"
 
 rm /tmp/vsh_create.*
+echo "Archive: $archive crée !"
