@@ -30,7 +30,7 @@ PORT=${3:-"8080"}
 ARCHIVE=${4:-"archive"}
 
 
-if ! [[ $MODE =~ ^-(list|extract|create|browse|server)$ ]]; then
+if ! [[ $MODE =~ ^-(list|extract|create|browse|server|help)$ ]]; then
 	echo ERROR: \"$MODE\" n\'est pas un mode.
 	exit 1
 fi
@@ -56,6 +56,9 @@ case $MODE in
 		;;
 	-server)
 		$ROOT/script/vsh_server $PORT
+		;;
+	-help)
+		cat $ROOT/doc.txt
 		;;
 	*)
 		echo "Error: No mode found"
