@@ -76,7 +76,7 @@ while IFS= read ligne_header; do
             nom_dossier=$(echo $ligne_header | cut -d ' ' -f2-)
 
             # Remplacer les "/" par des "\".
-            nom_dossier=$(echo $nom_dossier | sed 's/\//\\/g' )
+            nom_dossier=$(echo $nom_dossier | sed 's/\//\\/g' | sed 's/ /_/g' )
 
             echo directory "$nom_dossier" >> $tmp_archive
         ;;
@@ -90,11 +90,11 @@ while IFS= read ligne_header; do
             
             droits=$(echo $ls_l | cut -d ' ' -f1)
             taille=$(echo $ls_l | cut -d ' ' -f5)
-            nom_complet=$(echo $ls_l | cut -d ' ' -f9-)
+            nom_complet=$(echo $ls_l | cut -d ' ' -f9-) 
 
             # Maintenant que nous avons les infos complementaires du fichiers, nous n'avons seulement besoin de nom,
             # et non le chemin du fichier.
-            nom=$(basename "$nom_complet")
+            nom=$(basename "$nom_complet" | sed 's/ /_/g')
 
             
             if [[ -f $fichier ]]; then
