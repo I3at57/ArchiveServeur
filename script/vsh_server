@@ -117,8 +117,8 @@ function commande-lire-fichier() {
 }
 
 function commande-list-archives() {
-	archives=$(ls -A $LOCATION)
-	echo $archives
+	archives=$(ls -lA $LOCATION | cat | sed 's/$/ - /g' | egrep -o [A-Z].*$)
+	echo -e $archives
 }
 
 function commande-ls() {
