@@ -1,15 +1,16 @@
 #!/bin/bash
-if [[ -z $1 ]]; then 
-    echo "Usage: vsh_create <nom_archive>"
+if [[ $# -ne 3 ]]; then 
+    echo "Usage: vsh_create <host> <port> <nom_archive>"
     exit 1
 fi
 
 # Créer un fichier temporaire dans /tmp
 tmp_header=$(mktemp /tmp/vsh_create.XXXXXX)
 tmp_body=$(mktemp /tmp/vsh_create.XXXXXX)
-archive=$1
-
-if [[ -f $archive ]]; then rm $archive; fi
+tmp_archive=$(mktemp /tmp/vsh_create.XXXXXX)
+host=$1
+port=$2
+archive=$3
 
 # Pour créer le header, nous devons d'abord connaitre le nombre de ligne du header. 
 # Pour faire cela, nous allons commencer par créer un fichier header temporaire,
@@ -59,24 +60,29 @@ done <<< $(find ~+ -type d)
 long_head=$(cat $tmp_header | wc -l)
 fin_head=$((long_head+2))
 
-echo 3:$fin_head >$archive
-echo >>$archive
+echo 3:$fin_head >$tmp_archive
+echo >>$tmp_archive
 
 # Contient la fin du body pour l'instant. Cette variable sera incrementée de la longeur de chaque fichier ajouté
 fin_body_actu=$((fin_head+1))
 
 # Maintenant que nous avons identifié tous les fichiers de l'archive, nous pouvons reprendre le header temporaire,
 # chercher les informations complementaires, et ecrire tout cela dans le fichier archive final.
-while IFS="\n" read line; do
-    case ${line:0:1} in
+while IFS= read ligne_header; do
+    case ${ligne_header:0:1} in
         h)
             # Le "cut -d ' ' -f2-" permet de prendre tout ce qui vient apres le premier espace,
             # meme des fichiers dont les noms contiennent des espaces
-            echo directory $(echo $line | cut -d ' ' -f2-) >> $archive
+            nom_dossier=$(echo $ligne_header | cut -d ' ' -f2-)
+
+            # Remplacer les "/" par des "\".
+            nom_dossier=$(echo $nom_dossier | sed 's/\//\\/g' | sed 's/ /_/g' )
+
+            echo directory "$nom_dossier" >> $tmp_archive
         ;;
 
         c)
-            fichier=$(echo $line | cut -d ' ' -f2-)
+            fichier=$(echo "$ligne_header" | cut -d ' ' -f2-)
 
             # On fait un "ls -l" sur le fichier. C'est pour cela qu'il fallait garder le chemin relatif au fichier.
             # Le "-d" permet de traiter un dossier comme un fichier, c'est a dire ne pas aller chercher le contenu du dossier.
@@ -84,11 +90,11 @@ while IFS="\n" read line; do
             
             droits=$(echo $ls_l | cut -d ' ' -f1)
             taille=$(echo $ls_l | cut -d ' ' -f5)
-            nom_complet=$(echo $ls_l | cut -d ' ' -f9-)
+            nom_complet=$(echo $ls_l | cut -d ' ' -f9-) 
 
             # Maintenant que nous avons les infos complementaires du fichiers, nous n'avons seulement besoin de nom,
             # et non le chemin du fichier.
-            nom=$(basename "$nom_complet")
+            nom=$(basename "$nom_complet" | sed 's/ /_/g')
 
             
             if [[ -f $fichier ]]; then
@@ -108,27 +114,37 @@ while IFS="\n" read line; do
                     echo >> $tmp_body
                 fi
 
-                echo $nom $droits $taille $fin_body_actu $((nb_lignes))>> $archive
+                echo $nom $droits $taille $fin_body_actu $((nb_lignes))>> $tmp_archive
 
                 # Incrementer la fin du body de la longeur du fichier qui vient d'etre ecrit.
                 ((fin_body_actu+=nb_lignes))
             else
             # Sinon, on peut directement ecrire les infos du dossier
-                echo $nom $droits $taille >> $archive
+                echo $nom $droits $taille >> $tmp_archive
             fi
         ;;
 
         @)
-            echo @ >> $archive
+            echo @ >> $tmp_archive
         ;;
         *)
-            echo error $line
+            echo error $ligne_header
         ;;
     esac
 
 done <$tmp_header
 
 # Ajouter le body temporaire a la fin de l'archive
-cat $tmp_body >> $archive
+cat $tmp_body >> $tmp_archive
+
+{
+    # Cette premiere ligne indique au server que nous voulons envoyer / ecrire un fichier, avec comme nom $archive
+    echo ecrire-fichier $archive
+    # Ensuite on envoie la taille / longeur du fichier en caracteres sur la ligne suivante, pour que le serveur puisse savoir quand tout a été envoyé.
+    cat $tmp_archive | wc -c
+    # Et enfin on envoie le contenu.    
+    cat $tmp_archive
+} | ncat "$host" "$port"
 
 rm /tmp/vsh_create.*
+echo "Archive: $archive crée !"

@@ -1,0 +1,17 @@
+#!/bin/bash
+
+ROOT=$(dirname $(realpath $0))
+source $ROOT/utils
+
+# Declaration du tube
+FIFO="/tmp/$USER-fifo-$$"
+
+[ -e "$FIFO" ] || mkfifo "$FIFO"
+
+nettoyage () { rm -f "$FIFO"; }
+trap nettoyage EXIT
+
+HOST=${1:-"localhost"}
+PORT=${2:-"8080"}
+
+env_rcv_ligne $HOST $PORT list-archives

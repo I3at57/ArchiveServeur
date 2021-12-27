@@ -1,0 +1,120 @@
+#!/bin/bash
+
+ROOT=$(dirname $(realpath $0))
+source $ROOT/utils
+
+# Variables globales. Pas strictement necessaire, mais aide pour la lisibilité
+archive=""
+pwd=""
+
+gerer_input() {
+    if [[ -z $1 ]]; then return; fi
+    cmd=$1
+    shift
+    case $cmd in
+        pwd)
+            echo $pwd
+            ;;
+
+        ls)
+            dossier_recherche=$(combiner_chemins "$pwd" "$2")
+            dossier_recherche=${dossier_recherche#\\}
+            env_rcv_requete $host $port ls $archive $1 $dossier_recherche
+            ;;
+        
+        cd)
+            if [[ -z $1 ]]; then echo "Usage: cd <directory>"; return; fi
+
+            # Prendre le chemin actuel et essayer d'y ajouter le chemin entré par l'utilisateur. 
+            new_pwd=$(combiner_chemins "$pwd" "$1")
+
+            resultat=$(env_rcv_ligne $host $port chemin_existe $archive ${new_pwd#\\})
+
+            if [[ $resultat == "dossier" ]]; then
+                pwd=$new_pwd
+            else
+                echo Erreur: \"$new_pwd\" n\'est pas un dossier !
+            fi
+            ;;
+
+        cat)
+            chemin=$(combiner_chemins "$pwd" "$1")
+            resultat=$(env_rcv_ligne $host $port chemin_existe $archive ${chemin#\\})
+
+            if [[ $resultat != "fichier" ]]; then 
+                echo "Erreur: \"$chemin\" n'est pas un fichier"
+                return
+            fi
+            env_rcv_requete $host $port cat $archive $chemin
+            ;;
+
+        rm)
+            chemin=$(combiner_chemins "$pwd" "$1")
+            echo rm $archive $chemin | ncat $host $port
+            ;;
+
+        touch)
+            echo touch
+            ;;
+
+        mkdir)
+            echo mkdir
+            ;;
+        exit)
+            exit
+            ;;
+        *)
+            echo "Erreur: \"$cmd\" n'est pas une commande valide. "
+            ;;
+    esac
+}
+
+# Combine deux chemins ensemble
+combiner_chemins(){
+    chemin='\'
+
+    # Tant qu'il reste des chemins à combiner
+    while [[ ! -z $1 ]]; do
+        # Si on rencontre un chemin comenceant avec un "\", on recommence a la racine
+        if [[ "$1" == \\* ]]; then
+            chemin='\'
+        fi
+        
+        # Pour chaque sous-dossier du chemin
+        for dossier in $(echo $1 | sed -e 's/\\/ /g'); do
+            case $dossier in
+                .)
+                    # Rien faire
+                    :
+                    ;;
+                ..)
+                    # Retirer le dernier dossier du chemin
+                    chemin=${chemin%\\*}
+                    if [[ -z $chemin ]]; then chemin=\\; fi
+                    ;;
+                *)  
+                    chemin=$chemin\\$dossier
+                    ;;
+            esac
+        done
+        
+        shift
+    done
+    chemin=${chemin%\\}
+    chemin=$(echo $chemin | tr -s '\\')
+
+    if [[ -z $chemin ]]; then chemin=\\; fi
+
+    echo $chemin
+}
+
+host=${1:-"localhost"}
+port=${2:-"8080"}
+archive=${3:-"archive"}
+
+pwd='\'
+
+while true; do
+    IFS= read -p "vsh $pwd :> " -r input
+    gerer_input $input
+done

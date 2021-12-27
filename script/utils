@@ -1,0 +1,55 @@
+#!/bin/bash
+
+function lire_fichier() {
+    FIFO="/tmp/$USER-fifo-$$"
+    [ -e "$FIFO" ] || mkfifo "$FIFO"
+    trap "rm -f $FIFO" EXIT
+
+    HOST=${1:-"localhost"}
+    PORT=${2:-"8080"}
+    nom_fichier=${3:-"archive"}
+    destination=${4:-"archive"}
+
+    cat "$FIFO" | { IFS= ; echo "lire-fichier $nom_fichier"; read nb_carac; head -c $nb_carac > $destination; } | ncat $HOST $PORT > "$FIFO"
+}
+
+function ecrire_fichier() {
+    HOST=${1:-"localhost"}
+    PORT=${2:-"8080"}
+    nom_fichier=${3:-"archive"}
+    source_fichier=${4:-"archive"}
+
+    { echo "ecrire-fichier $nom_fichier"; cat $source_fichier | wc -c; cat $source_fichier; } | ncat $HOST $PORT
+}
+
+# Fonction pour envoyer une requete au serveur, puis recevoir une réponse de longeur précisée par le serveur
+function env_rcv_requete() {
+    FIFO="/tmp/$USER-fifo-$$"
+    [ -e "$FIFO" ] || mkfifo "$FIFO"
+    trap "rm -f $FIFO" EXIT
+
+    HOST=${1:-"localhost"}
+    PORT=${2:-"8080"}
+    shift 2
+    
+    args=$*
+
+    cat "$FIFO" | { IFS= ; echo "$args"; read nb_carac; head -c $nb_carac > .tmp; } | ncat $HOST $PORT > "$FIFO"
+    cat .tmp; rm .tmp
+}
+
+# Fonction pour envoyer une requete au serveur, puis lire la premiere ligne de reponse
+function env_rcv_ligne() {
+    FIFO="/tmp/$USER-fifo-$$"
+    [ -e "$FIFO" ] || mkfifo "$FIFO"
+    trap "rm -f $FIFO" EXIT
+
+    HOST=${1:-"localhost"}
+    PORT=${2:-"8080"}
+    shift 2
+    
+    args=$*
+
+    cat "$FIFO" | { IFS= ; echo "$args"; read ligne; echo -e $ligne > .tmp; } | ncat $HOST $PORT > "$FIFO"
+    cat .tmp; rm .tmp
+}

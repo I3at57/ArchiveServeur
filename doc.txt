@@ -1,0 +1,40 @@
+NAME
+	vsh - gestion de serveur d'archives
+
+SYNOPSIS
+	vsh [OPTION] <nom_serveur> <port> ...
+
+DESCRIPTION
+	Permet de creer et gerer des archives du repertoire courant.
+	Il est utilise en combinaison avec 5 modes.
+
+	* vsh -create <nom_serveur> <port> <nom_archive>
+		
+		Permet de créer une archive de l'arborescence du repertoire courant
+		et la stocker sur le serveur.
+
+	* vsh -list <nom_serveur> <port>
+
+		Permet de lister l'ensemble des archives presentes sur le serveur
+
+	* vsh -browse <nom_serveur> <port> <nom_archive>
+
+		Permet de naviguer à l'interieur d'une archive.
+		Une fois dans l'archive on possede les actions suivantes:
+		- pwd
+		- ls
+		- cd
+		- cat
+		- rm
+		- touch
+		- mkdir
+
+	* vsh -extract <nom_serveur> <port> <nom_archive>
+
+		Permet de recrer l'arborescence decrite par une archive presente sur le serveur
+		dans le repertoire courant
+
+	* vsh -server
+
+		Permet de lancer le serveur.
+		Ne doit être execute que sur la machine serveur.

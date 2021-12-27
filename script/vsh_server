@@ -1,0 +1,491 @@
+#! /bin/bash
+
+# Ce script implemente un serveur.  
+
+PORT=${1:-"8080"}
+LOCATION=${2:-"$HOME/.archives"}
+
+# Créer le dossier contenant les archives s'il n'existe pas.
+[ -d $LOCATION ] || mkdir $LOCATION
+
+# Declaration du tube
+FIFO="/tmp/$USER-fifo-$$"
+# on cree le tube nomme
+[ -e "$FIFO" ] || mkfifo "$FIFO"
+
+# Il faut detruire le tube quand le serveur termine pour eviter de
+# polluer /tmp.  On utilise pour cela une instruction trap pour etre sur de
+# nettoyer meme si le serveur est interrompu par un signal.
+trap "rm -f \"$FIFO\"" EXIT
+
+function accept-loop() {
+    while true; do
+		echo new connection on "$PORT"
+		cat "$FIFO" | interaction | ncat -lp "$PORT" > "$FIFO"
+    done
+}
+
+# La fonction interaction lit les commandes du client sur entree standard 
+# et envoie les reponses sur sa sortie standard. 
+#
+# 	CMD arg1 arg2 ... argn                   
+#                     
+# alors elle invoque la fonction :
+#                                                                            
+#         commande-CMD arg1 arg2 ... argn                                      
+#                                                                              
+# si elle existe; sinon elle envoie une reponse d'erreur.                    
+
+# Cette fonction va récupérer les arguments et executer la commande choisie
+function interaction() {
+	read -r cmd args || exit -1
+	fun="commande-$cmd"
+	if [ "$(type -t $fun)" = "function" ]; then
+		cat | $fun $args
+	else
+		cat | commande-non-comprise $fun $args
+	fi
+}
+
+###########################################################################
+# Les fonctions utilitaires
+###########################################################################
+
+function get_contenu_dossier() {
+	archive=$1
+	chemin_abs=$2
+
+	root_archive=$(get_chemin_abs $archive)
+	(
+		IFS=
+		read dim_header
+		header_debut=$(echo $dim_header | awk -F ":" '{print $1}')
+		header_fin=$(echo $dim_header | awk -F ":" '{print $2}')
+
+		printf -v recherche 'directory %s' "$chemin_abs"
+		dossier_trouve=False
+
+		i=2
+		while [[ $dossier_trouve == "False" ]] && [ $i -lt $header_fin ] && read -r ligne; do
+			if [[ "$ligne" == "$recherche" ]]; then dossier_trouve=True; fi
+			((i++))
+		done
+		
+		if [[ $dossier_trouve == False ]]; then exit 1; fi
+		while read -r ligne && [[ $ligne != "@" ]]; do
+			echo "$ligne"
+		done
+
+	) < $archive
+}
+
+function chemin_existe(){
+	archive=$1
+	chemin_abs=$2
+
+	root_archive=$(get_chemin_abs $archive)
+	if [[ "$chemin_abs" == "$root_archive" ]]; then echo "dossier"; exit 0; fi
+
+	# On retire la derniere partie du chemin. On va tenter de trouver le dossier parent du chemin recherché. 
+	# Cela rendra la distinction entre dossier et fichier plus facile plus tard.
+	chemin_parent=$(get_chemin_parent "$chemin_abs")
+
+	nom_fichier=${chemin_abs#"$chemin_parent\\"}
+
+	resultats=$(get_contenu_dossier $archive $chemin_parent)
+
+	if [ ! $? = 0 ]; then echo erreur; exit; fi
+
+	while IFS= read -r ligne; do
+		nom=$(echo $ligne | awk '{print $1}')
+		if [[ $nom != $nom_fichier ]]; then continue; fi
+
+		droits=$(echo $ligne | awk '{print $2}')
+
+		# Si c'est un dossier, on imprime "dossier"
+		if [[ $droits =~ ^d.* ]]; then echo "dossier"; exit; fi
+
+		# Sinon on imprime "fichier"
+		echo "fichier"; exit
+
+	done <<< "$resultats"
+
+	# Si jamais on arrive ici, c'est que le fichier/dossier recherché n'existe pas
+	# Donc on imprime "erreur"
+	echo erreur
+}
+
+function get_chemin_parent(){
+	chemin=$1
+	
+	chemin_parent=${chemin%\\*}
+	if [[ $chemin_parent == $chemin ]]; then 
+		echo ""
+	else
+		echo $chemin_parent
+	fi
+}
+
+function get_chemin_abs() {
+	archive=$1
+	chemin=$2
+
+	{
+		IFS=
+		read -r dim_header
+		header_debut=$(echo $dim_header | awk -F ":" '{print $1}')
+		root_archive=$(sed "$((header_debut-1))q;d" | cut -d " " -f2-)
+		chemin_abs=$root_archive\\$chemin
+		chemin_abs=${chemin_abs%\\}
+	} < $archive
+	echo $chemin_abs
+}
+
+###########################################################################
+# Les fonctions commandes
+###########################################################################
+
+function commande-non-comprise () {
+	echo "Le serveur ne peut pas interpreter cette commande"
+}
+
+function commande-ecrire-fichier() {
+	if [ -z $1 ] ; then echo "Error: No file name found" ; exit 1 ; fi
+
+	read nb_char
+	head -c $nb_char > $LOCATION/$1
+}
+
+function commande-lire-fichier() {
+	if [ -z $1 ] ; then echo "Error: No file name found" ; exit 1 ; fi
+
+	# Compter le nombre de caracteres à envoyer
+	cat $LOCATION/$1 | wc -c
+	cat $LOCATION/$1
+}
+
+function commande-list-archives() {
+	archives=$(ls -lA $LOCATION | cat | sed 's/$/ - /g' | egrep -o [A-Z].*$)
+	echo -e $archives
+}
+
+function commande-ls() {
+	if [ $# -lt 1 ]; then echo "Usage: ls [-(l|a)] chemin"; exit 1; fi
+
+	archive=$LOCATION/$1
+	if [ ! -f $archive ]; then echo "Error: L'archive \"$1\" n'existe pas"; exit 1; fi
+
+	ls_a=False
+	ls_l=False
+
+	if [[ $2 =~ ^- ]]; then
+		if [ -z $2 ]; then echo "Usage: ls [-(l|a)] chemin"; exit 1; fi
+
+		chemin=$3
+		if [[ $2 =~ l ]]; then ls_l=True; fi
+		if [[ $2 =~ a ]]; then ls_a=True; fi
+	else
+		chemin=$2
+	fi
+
+	chemin_abs=$(get_chemin_abs "$archive" "$chemin")
+
+	resultat=$(
+		while IFS= read -r ligne; do
+			nom=$(echo $ligne | awk '{print $1}')
+
+			# Si il n'y a pas l'option "-a" et le fichier / dossier est caché, ne rien faire
+			if [ $ls_a == False ] && [[ $nom =~ ^[.].* ]]; then
+				continue
+			fi
+			
+			droits=$(echo $ligne | awk '{print $2}')
+
+			if [ $ls_l == True ]; then
+				taille=$(echo $ligne | awk '{print $3}')
+				printf "%s %s %s \n" $droits $taille $nom
+			else
+				# Si c'est un dossier, il faut ajouter un "\" à la fin
+				if [[ $droits =~ ^d.* ]]; then
+					printf "%s\\ " $nom
+				else
+					printf "%s " $nom
+				fi
+			fi
+
+		done <<< $(get_contenu_dossier $archive $chemin_abs) | column -t
+	)
+	echo -e "$resultat" | wc -c
+	echo -e "$resultat"
+}
+
+# Cette fonction permet au client de déterminer si un chemin donné existe dans une archive, et si c'est le cas, indique si cela est un dossier ou un fichier.
+function commande-chemin_existe() {
+	archive=$LOCATION/$1
+
+	# On s'assure qu'il n'y a pas de "\" à la fin du chemin
+	chemin=${2%\\}
+	chemin_abs=$(get_chemin_abs $archive "$chemin")
+
+	chemin_existe $archive "$chemin_abs"
+}
+
+function commande-cat() {
+	archive=$LOCATION/$1
+
+	# On s'assure qu'il n'y a pas de "\" à la fin du chemin
+	chemin=${2%\\}
+	chemin=${chemin#\\}
+	chemin_abs=$(get_chemin_abs "$archive" "$chemin")
+
+	dossier_parent=$(get_chemin_parent "$chemin_abs")
+
+	nom_fichier=${chemin_abs#"$dossier_parent\\"}
+
+	debut_contenu=0
+	longeur_contenu=0
+
+	while IFS= read -r ligne; do
+		nom=$(echo $ligne | awk '{print $1}')
+		droits=$(echo $ligne | awk '{print $2}')
+		if [[ $droits =~ ^d.* ]]; then continue; fi
+		if [[ $nom == $nom_fichier ]]; then 
+			debut_contenu=$(echo $ligne | awk '{print $4}')
+			longeur_contenu=$(echo $ligne | awk '{print $5}')
+			break
+		fi
+	done <<< $(get_contenu_dossier $archive $dossier_parent)
+
+	if [ $debut_contenu = 0 ]; then echo 0; exit; fi
+
+	contenu=$(cat $archive | tail +$debut_contenu | head -$longeur_contenu )
+
+	echo -e "$contenu" | wc -c
+	echo -e "$contenu"
+}
+
+function commande-rm(){
+	archive=$LOCATION/$1
+	chemin=${2%\\}
+	chemin=${chemin#\\}
+	chemin_abs=$(get_chemin_abs $archive $chemin)
+
+	type=$(chemin_existe $archive $chemin_abs)
+	if [ $type = "erreur" ]; then exit 1; fi
+
+	header_avant_suppression=""
+	header_apres_suppression=""
+
+	contenu_avant_suppresion=""
+	contenu_apres_suppresion=""
+
+	nb_lignes_header_supprime=0
+	nb_lignes_contenu_supprime=0
+
+	debut_contenu_supprime=0
+	fin_contenu_supprime=0
+	
+	(	
+		IFS= 
+		read -r dim_header
+		read -r
+
+		fin_header=$(echo $dim_header | awk -F ':' '{print $2}')
+
+		if [ $type = "fichier" ]; then
+			nb_lignes_header_supprime=1
+
+			# On trouve le dossier parent
+			chemin_parent=$(get_chemin_parent "$chemin_abs")
+			nom_fichier=${chemin_abs#"$chemin_parent\\"}
+
+			printf -v recherche 'directory %s' "$chemin_parent"
+
+			i=3
+			while read -r ligne; do
+				((i++))
+				printf -v header_avant_suppression '%s%s\n' "$header_avant_suppression" "$ligne"
+				if [[ "$ligne" == "$recherche"  ]]; then break; fi
+			done
+
+			while read -r ligne; do
+				((i++))
+				if [[ "$ligne" =~ ^$nom_fichier.*  ]]; then 
+					debut_contenu_supprime=$(echo "$ligne" | awk '{print $4}')
+					nb_lignes_contenu_supprime=$(echo "$ligne" | awk '{print $5}')
+					fin_contenu_supprime=$((debut_contenu_supprime+nb_lignes_contenu_supprime-1))
+					break
+				fi
+				printf -v header_avant_suppression '%s%s\n' "$header_avant_suppression" "$ligne"
+			done
+		else
+			nb_lignes_header_supprime=1
+
+			# On trouve le dossier parent
+			chemin_parent=$(get_chemin_parent "$chemin_abs")
+			nom_fichier=${chemin_abs#"$chemin_parent\\"}
+
+			printf -v recherche 'directory %s' "$chemin_parent"
+
+			i=3
+			# On avance juste à ce que l'on trouve le header du dossier contenant le dossier que l'on veut supprimer
+			while read -r ligne; do
+				((i++))
+				printf -v header_avant_suppression '%s%s\n' "$header_avant_suppression" "$ligne"
+				if [[ "$ligne" == "$recherche"  ]]; then break; fi
+			done
+
+			# On avance juste à ce que l'on trouve le dossier que l'on veut supprimer
+			while read -r ligne; do
+				((i++))
+				if [[ "$ligne" =~ ^$nom_fichier.*  ]]; then break; fi
+
+				printf -v header_avant_suppression '%s%s\n' "$header_avant_suppression" "$ligne"
+			done
+
+			printf -v recherche 'directory %s' "$chemin_abs"
+
+			# On avance juste à ce que l'on trouve le header du dossier que l'on veut supprimer
+			while read -r ligne; do
+				((i++))
+				if [[ "$ligne" == "$recherche"  ]]; then break; fi
+				printf -v header_avant_suppression '%s%s\n' "$header_avant_suppression" "$ligne"
+			done
+			((nb_lignes_header_supprime++))
+
+			# On supprime toute les lignes contenu dans les headers des dossiers qui sont fils du dossier à supprimer (qui commencent par )
+			while true; do
+				# On sait que l'on vient de lire le header pour la dossier qui va etre supprimer, 
+				# donc les lignes suivantes seront le contenu de ce dossier.
+				# On lit ce contenu jusqu'à rencontre la fin du header dossier '@'.
+				while true; do
+					read -r ligne
+					((i++))
+					((nb_lignes_header_supprime++))
+					if [[ "$ligne" == "@" ]]; then break; fi
+
+					nom=$(echo "$ligne" | awk '{print $1}')
+					droits=$(echo "$ligne" | awk '{print $2}')
+					if [[ "$droits" =~ ^-.* ]]; then
+						debut=$(echo "$ligne" | awk '{print $4}')
+
+						# Si debut_contenu_supprime=0, cela indique que nous n'avions pas encore trouvé le debut du contenu des fichiers du dossier à supprimer
+						if [[ debut_contenu_supprime -eq 0 ]]; then 
+							debut_contenu_supprime=$debut
+						fi
+						nb_lignes=$(echo "$ligne" | awk '{print $5}')
+						((nb_lignes_contenu_supprime+=nb_lignes))
+					fi
+				done
+
+				if [[ $i -gt $fin_header ]]; then break; fi
+				read -r header_dossier
+				((i++))
+				# Si le header que l'on vient juste de lire commence par 'directory <dossier à supprimer>', 
+				# on sait que ce dossier fait partie du dossier à etre supprimé
+				if [[ "$header_dossier" != "$recherche"* ]]; then 
+					printf -v header_avant_suppression '%s%s\n' "$header_avant_suppression" "$header_dossier"
+					break
+				fi
+				((nb_lignes_header_supprime++))
+			done
+		fi
+
+		((fin_contenu_supprime=debut_contenu_supprime+nb_lignes_contenu_supprime-1))
+
+		while [[ $i -le $fin_header ]] && read -r ligne; do
+			((i++))
+			printf -v header_apres_suppression '%s%s\n' "$header_apres_suppression" "$ligne"
+		done
+
+		while [[ $i -lt $debut_contenu_supprime ]] && read -r ligne; do
+			((i++))
+			printf -v contenu_avant_suppresion '%s%s\n' "$contenu_avant_suppresion" "$ligne"
+		done
+
+		while [[ $i -le $fin_contenu_supprime ]] && read -r ligne; do
+			((i++))
+		done
+
+		while read -r ligne; do
+			printf -v contenu_apres_suppresion '%s%s\n' "$contenu_apres_suppresion" "$ligne"
+		done
+
+		header_avant_suppression=$(
+			while true; do
+				if ! read -r header_dossier; then break; fi
+				printf '%s\n' "$header_dossier"
+				while true; do
+					if ! read -r ligne; then break; fi
+					if [[ "$ligne" == "@" ]]; then
+						printf '%s\n' "$ligne"
+						break
+					fi
+					droits=$(echo "$ligne" | awk '{print $2}')
+					if [[ "$droits" =~ ^-.* ]]; then
+						nom=$(echo "$ligne" | awk '{print $1}')
+						taille=$(echo "$ligne" | awk '{print $3}')
+						debut=$(echo "$ligne" | awk '{print $4}')
+						nb_lignes=$(echo "$ligne" | awk '{print $5}')
+
+						debut_contenu=$((debut-nb_lignes_header_supprime))
+
+						printf '%s %s %s %s %s\n' "$nom" "$droits" "$taille" "$debut_contenu" "$nb_lignes"
+					else
+						printf '%s\n' "$ligne"
+					fi
+
+				done
+			done <<< "$header_avant_suppression"
+		)
+		
+		header_apres_suppression=$(
+			while true; do
+				while true; do
+					if ! read -r ligne; then break; fi
+					if [[ "$ligne" == "@" ]]; then
+						printf '%s\n' "$ligne"
+						break
+					fi
+					droits=$(echo "$ligne" | awk '{print $2}')
+					if [[ "$droits" =~ ^-.* ]]; then
+						nom=$(echo "$ligne" | awk '{print $1}')
+						taille=$(echo "$ligne" | awk '{print $3}')
+						debut=$(echo "$ligne" | awk '{print $4}')
+						nb_lignes=$(echo "$ligne" | awk '{print $5}')
+
+						debut_contenu=$((debut-nb_lignes_header_supprime-nb_lignes_contenu_supprime))
+
+						printf '%s %s %s %s %s\n' "$nom" "$droits" "$taille" "$debut_contenu" "$nb_lignes"
+					else
+						printf '%s\n' "$ligne"
+					fi
+
+				done
+				if ! read -r header_dossier; then break; fi
+				printf '%s\n' "$header_dossier"
+			done <<< "$header_apres_suppression"
+		)
+
+		if [ ! -z "$header_avant_suppression" ]; then
+			printf -v header_avant_suppression '%s\n' "$header_avant_suppression"
+		fi
+
+		if [ ! -z "$header_apres_suppression" ]; then
+			printf -v header_apres_suppression '%s\n' "$header_apres_suppression"
+		fi
+		
+		nv_dim_header=3:$((fin_header-nb_lignes_header_supprime))
+		printf '%s\n\n%s%s%s%s' "$nv_dim_header" "$header_avant_suppression" "$header_apres_suppression" "$contenu_avant_suppresion" "$contenu_apres_suppresion" > .tmp
+
+		printf '%s\n\n%s====\n%s====\n%s====\n%s====\n' "$nv_dim_header" "$header_avant_suppression" "$header_apres_suppression" "$contenu_avant_suppresion" "$contenu_apres_suppresion" > b
+
+	) < $archive
+	rm $archive
+	mv .tmp $archive
+}
+
+# On accepte et traite les connexions
+accept-loop
+
+# commande-rm archive dossier_test
