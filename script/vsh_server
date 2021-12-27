@@ -478,9 +478,6 @@ function commande-rm(){
 		
 		nv_dim_header=3:$((fin_header-nb_lignes_header_supprime))
 		printf '%s\n\n%s%s%s%s' "$nv_dim_header" "$header_avant_suppression" "$header_apres_suppression" "$contenu_avant_suppresion" "$contenu_apres_suppresion" > .tmp
-
-		printf '%s\n\n%s====\n%s====\n%s====\n%s====\n' "$nv_dim_header" "$header_avant_suppression" "$header_apres_suppression" "$contenu_avant_suppresion" "$contenu_apres_suppresion" > b
-
 	) < $archive
 	rm $archive
 	mv .tmp $archive
