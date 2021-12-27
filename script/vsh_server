@@ -382,9 +382,10 @@ function commande-rm(){
 				read -r header_dossier
 				((i++))
 				# Si le header que l'on vient juste de lire commence par 'directory <dossier à supprimer>', 
-				# on sait que ce dossier fait partie du dossier à etre supprimé
+				# on sait que ce dossier fait partie du dossier à etre supprimé, sinon, 
+				# on sait que l'on est sorti du dossier et que l'on doit stocker la ligne dans 'header_apres_suppression'. 
 				if [[ "$header_dossier" != "$recherche"* ]]; then 
-					printf -v header_avant_suppression '%s%s\n' "$header_avant_suppression" "$header_dossier"
+					printf -v header_apres_suppression '%s%s\n' "$header_apres_suppression" "$header_dossier"
 					break
 				fi
 				((nb_lignes_header_supprime++))
