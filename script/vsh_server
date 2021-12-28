@@ -310,7 +310,7 @@ function commande-rm(){
 
 			while read -r ligne; do
 				((i++))
-				if [[ "$ligne" =~ ^$nom_fichier.*  ]]; then 
+				if [[ "$ligne" =~ ^$nom_fichier\ .*  ]]; then 
 					debut_contenu_supprime=$(echo "$ligne" | awk '{print $4}')
 					nb_lignes_contenu_supprime=$(echo "$ligne" | awk '{print $5}')
 					fin_contenu_supprime=$((debut_contenu_supprime+nb_lignes_contenu_supprime-1))
@@ -481,6 +481,7 @@ function commande-rm(){
 	) < $archive
 	rm $archive
 	mv .tmp $archive
+	rm .tmp
 }
 
 function commande-touch() {
@@ -578,6 +579,9 @@ function commande-touch() {
 		printf '%s\n\n%s%s%s%s' "$nv_dim_header" "$header" "$contenu" > .tmp
 
 	) < $archive
+	rm $archive
+	mv .tmp $archive
+	rm .tmp
 }
 
 # On accepte et traite les connexions
