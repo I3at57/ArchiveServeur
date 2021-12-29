@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Fonction pour transérer un fichier archive du serveur dans un fichier dans le repertoire courant.
+# Usage: lire_fichier <addresse> <port> <nom_archive> <destination_locale>
 function lire_fichier() {
     FIFO="/tmp/$USER-fifo-$$"
     [ -e "$FIFO" ] || mkfifo "$FIFO"

@@ -17,6 +17,11 @@
 # (ici c'est le scrip vsh, donc cela nous donne le chemin absolu du dossier du projet).
 # En combinant les deux, on peut obtenir le chemin absolu du dossier du projet --> $ROOT.
 
+# Part défaut si aucun argument n'est utilisé la fonction utilise les valeurs suivantes:
+# HOST = localhost
+# PORT = 8080
+# Archive = archive
+
 ROOT=$(dirname $(realpath $0))
 
 if [ $# -lt 1 ] || [ $# -gt 4 ]; then 
@@ -25,7 +30,6 @@ if [ $# -lt 1 ] || [ $# -gt 4 ]; then
 fi
 
 MODE=$1
-
 case $MODE in
 	-extract)
 		HOST=${2:-"localhost"}
