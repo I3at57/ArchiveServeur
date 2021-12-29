@@ -3,12 +3,34 @@
 ######################################################################################
 
 #######################
+#FONCTION : archive_is_existing
+#Vérifie si l'archive souhaitée existe vraiment sur le serveur
+function archive_is_existing() {
+	find="$(bash $ROOT/vsh_list $1 $2)"
+	echo $find
+	if [[ $find =~ " $3 -" ]]
+	then
+		TROUVE='OUI'
+		echo $TROUVE
+	else
+		TROUVE='NON'
+		echo $TROUVE
+	fi
+}
+
+#######################
+#FONCTION : get_arch()
+#Transfert un fichier d'archive existant sur le serveur dans le repertoire courant.
+function get_arch() {
+	:
+}
+
+#######################
 #FONCTION : get_values
 #Initialise toutes les variables et crée les fichiers temporaires
-
 function get_values() {
 	ELDER_DIR=$(pwd) #Place ou le script s'execute
-	ARCHIVE="$3" #Nom de l'archive qui doit être présente dans ELDER_DIR
+	ARCHIVE="$1" #Nom de l'archive qui doit être présente dans ELDER_DIR
 
 	DEBUT_HEADER=$(head -1 $ARCHIVE | cut -d':' -f1)
 	DEBUT_BODY=$(head -1 $ARCHIVE | cut -d':' -f2)
@@ -25,6 +47,9 @@ function get_values() {
 	mkdir -p "./$NOM_BASE"
 }
 
+#######################
+#FONCTION : build
+#Recrée l'archive décrite par un fichier présent dans le répertoire courant
 function build() {
 	while read lines
 	do
@@ -75,7 +100,23 @@ if [[ $# -ne 3 ]]; then
     exit 1
 fi
 
-get_values $1 $2 $3
-build
+# Initialise les variables
+SERVER=$1	#Nom du serveur
+PORT=$2	#Numéro de port
+ARCHIVE=$3	#Nom de l'archive
+ROOT=$(dirname $(realpath $0)) #Chemin du répertoire courant ou est executé le script
+TROUVE='NON'	#Variable qui explicite la présence de l'archive
 
-rm .temphead .tempbody
+archive_is_existing $SERVER $PORT $ARCHIVE
+
+if [ $TROUVE == 'OUI' ]
+then
+	echo "L'archive souhaitée existe."
+	get_arch	#Transfère l'archive souhaité dans le répertoire courant
+	get_values $ARCHIVE	#Récupère les varibales de l'archive
+	build	#recrée l'arboréscence
+	rm .temphead .tempbody
+	#rm $3
+else
+	echo "L'archive souhaitée n'existe pas."
+fi
