@@ -1,28 +1,19 @@
 #!/bin/bash -e
 
-######################################################################################
+ROOT=$(dirname $(realpath $0))
+source $ROOT/utils
 
 #######################
 #FONCTION : archive_is_existing
 #Vérifie si l'archive souhaitée existe vraiment sur le serveur
 function archive_is_existing() {
 	find="$(bash $ROOT/vsh_list $1 $2)"
-	echo $find
 	if [[ $find =~ " $3 -" ]]
 	then
 		TROUVE='OUI'
-		echo $TROUVE
 	else
 		TROUVE='NON'
-		echo $TROUVE
 	fi
-}
-
-#######################
-#FONCTION : get_arch()
-#Transfert un fichier d'archive existant sur le serveur dans le repertoire courant.
-function get_arch() {
-	:
 }
 
 #######################
@@ -71,10 +62,8 @@ function build() {
 				else
 					nom_file=$(echo $lines | cut -d' ' -f1)
 					path="$currentdir/$nom_file"
-					# echo $nom_file $path
 					debut_file=$(echo $lines | cut -d' ' -f4)
 					nbr_file=$(echo $lines | cut -d' ' -f5)
-					# echo $debut_file $nbr_file
 					marqA=$((debut_file - DEBUT_BODY + nbr_file - 1))
 					head -$marqA .tempbody | tail -$nbr_file > $path
 
@@ -94,12 +83,6 @@ function build() {
 
 ######################################################################################
 
-# Vérifie la présence des arguments
-if [[ $# -ne 3 ]]; then 
-    echo "Usage: vsh_create <host> <port> <nom_archive>"
-    exit 1
-fi
-
 # Initialise les variables
 SERVER=$1	#Nom du serveur
 PORT=$2	#Numéro de port
@@ -108,15 +91,13 @@ ROOT=$(dirname $(realpath $0)) #Chemin du répertoire courant ou est executé le
 TROUVE='NON'	#Variable qui explicite la présence de l'archive
 
 archive_is_existing $SERVER $PORT $ARCHIVE
-
 if [ $TROUVE == 'OUI' ]
 then
 	echo "L'archive souhaitée existe."
-	get_arch	#Transfère l'archive souhaité dans le répertoire courant
+	lire_fichier $SERVER $PORT $ARCHIVE $ARCHIVE
 	get_values $ARCHIVE	#Récupère les varibales de l'archive
 	build	#recrée l'arboréscence
-	rm .temphead .tempbody
-	#rm $3
+	rm .temphead .tempbody $ARCHIVE
 else
 	echo "L'archive souhaitée n'existe pas."
 fi
