@@ -310,7 +310,7 @@ function commande-rm(){
 
 			while read -r ligne; do
 				((i++))
-				if [[ "$ligne" =~ ^$nom_fichier.*  ]]; then 
+				if [[ "$ligne" =~ ^$nom_fichier\ .*  ]]; then 
 					debut_contenu_supprime=$(echo "$ligne" | awk '{print $4}')
 					nb_lignes_contenu_supprime=$(echo "$ligne" | awk '{print $5}')
 					fin_contenu_supprime=$((debut_contenu_supprime+nb_lignes_contenu_supprime-1))
@@ -382,9 +382,10 @@ function commande-rm(){
 				read -r header_dossier
 				((i++))
 				# Si le header que l'on vient juste de lire commence par 'directory <dossier à supprimer>', 
-				# on sait que ce dossier fait partie du dossier à etre supprimé
+				# on sait que ce dossier fait partie du dossier à etre supprimé, sinon, 
+				# on sait que l'on est sorti du dossier et que l'on doit stocker la ligne dans 'header_apres_suppression'. 
 				if [[ "$header_dossier" != "$recherche"* ]]; then 
-					printf -v header_avant_suppression '%s%s\n' "$header_avant_suppression" "$header_dossier"
+					printf -v header_apres_suppression '%s%s\n' "$header_apres_suppression" "$header_dossier"
 					break
 				fi
 				((nb_lignes_header_supprime++))
@@ -477,12 +478,110 @@ function commande-rm(){
 		
 		nv_dim_header=3:$((fin_header-nb_lignes_header_supprime))
 		printf '%s\n\n%s%s%s%s' "$nv_dim_header" "$header_avant_suppression" "$header_apres_suppression" "$contenu_avant_suppresion" "$contenu_apres_suppresion" > .tmp
+	) < $archive
+	rm $archive
+	mv .tmp $archive
+	rm .tmp
+}
 
-		printf '%s\n\n%s====\n%s====\n%s====\n%s====\n' "$nv_dim_header" "$header_avant_suppression" "$header_apres_suppression" "$contenu_avant_suppresion" "$contenu_apres_suppresion" > b
+function commande-touch() {
+	archive=$LOCATION/$1
+	chemin=${2%\\}
+	chemin=${chemin#\\}
+	chemin_abs=$(get_chemin_abs $archive $chemin)
+	if [[ $(chemin_existe $archive $chemin_abs) == "fichier" ]]; then exit 0; fi
+
+	dossier_parent=$(get_chemin_parent "$chemin_abs")
+	nom_fichier=${chemin_abs#"$dossier_parent\\"}
+
+	if [[ $(chemin_existe $archive $dossier_parent) != "dossier" ]]; then exit 1; fi
+
+	header=""
+	contenu=""
+
+	
+	(	
+		IFS= 
+		read -r dim_header
+		read -r
+
+		fin_header=$(echo $dim_header | awk -F ':' '{print $2}')
+		printf -v recherche 'directory %s' "$dossier_parent"
+
+		ligne_contenu_apres_dernier_fichier=$((fin_header+1))
+
+		# On cherche le dossier dans lequel on va inserer notre fichier
+		i=3
+		while read -r ligne; do
+			((i++))
+			printf -v header '%s%s\n' "$header" "$ligne"
+			if [[ "$ligne" == "$recherche"  ]]; then break; fi
+
+			droits=$(echo $ligne | awk '{print $2}')
+
+			# On se rapelle de la ligne qui viendrait apres le contenu du dernier fichier pour savoir quelle ligne donner au contenu du nouveau fichier
+			if [[ $droits =~ ^- ]]; then
+				debut_contenu=$(echo $ligne | awk '{print $4}')
+				nb_lignes_contenu=$(echo $ligne | awk '{print $5}')
+				fin_contenu=$((debut_contenu+nb_lignes_contenu))
+				ligne_contenu_apres_dernier_fichier=$fin_contenu
+			fi
+		done
+
+		# On insere le nouveau fichier
+		nv_ligne="$nom_fichier -rw-r--r-- 0 $ligne_contenu_apres_dernier_fichier 0"
+		printf -v header '%s%s\n' "$header" "$nv_ligne"
+
+		# On continu jusqu'à la fin du header
+		while [[ $i -le $fin_header ]] && read -r ligne; do
+			((i++))
+			printf -v header '%s%s\n' "$header" "$ligne"
+		done
+
+		# On lit la fin du fichier
+		contenu=$(cat)
+
+		# On relit le header pour pouvoir ajouter 1 pour le debut du contenu de chaque fichier (car nous avons ajouté une ligne)
+		header=$(
+			while true; do
+				if ! read -r header_dossier; then break; fi
+				printf '%s\n' "$header_dossier"
+				while true; do
+					if ! read -r ligne; then break; fi
+					if [[ "$ligne" == "@" ]]; then
+						printf '%s\n' "$ligne"
+						break
+					fi
+					droits=$(echo "$ligne" | awk '{print $2}')
+					if [[ "$droits" =~ ^-.* ]]; then
+						nom=$(echo "$ligne" | awk '{print $1}')
+						taille=$(echo "$ligne" | awk '{print $3}')
+						debut=$(echo "$ligne" | awk '{print $4}')
+						nb_lignes=$(echo "$ligne" | awk '{print $5}')
+
+						debut_contenu=$((debut+1))
+
+						printf '%s %s %s %s %s\n' "$nom" "$droits" "$taille" "$debut_contenu" "$nb_lignes"
+					else
+						printf '%s\n' "$ligne"
+					fi
+
+				done
+			done <<< "$header"
+		)
+
+		if [ ! -z "$header" ]; then
+			printf -v header '%s\n' "$header"
+		fi
+
+		nv_dim_header=3:$((fin_header+1))
+
+		printf '%s\n\n%s%s%s%s' "$nv_dim_header" "$header" "$contenu" > .tmp
 
 	) < $archive
 	rm $archive
 	mv .tmp $archive
+	rm .tmp
 }
 
 # On accepte et traite les connexions
