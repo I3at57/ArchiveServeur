@@ -481,7 +481,6 @@ function commande-rm(){
 	) < $archive
 	rm $archive
 	mv .tmp $archive
-	rm .tmp
 }
 
 function commande-touch() {
@@ -582,6 +581,119 @@ function commande-touch() {
 	rm $archive
 	mv .tmp $archive
 	rm .tmp
+}
+
+function commande-mkdir() {
+	local archive=$LOCATION/$1
+	local p=False
+	if [[ $2 == "-p" ]]; then 
+		p=True
+		chemin=${3%\\}
+	else
+		chemin=${2%\\}
+	fi
+
+	local chemin=${chemin#\\}
+	local chemin_abs=$(get_chemin_abs $archive $chemin)
+	if [[ $(chemin_existe $archive $chemin_abs) != "erreur" ]]; then exit 1; fi
+
+	local dossier_parent=$(get_chemin_parent "$chemin_abs")
+
+	# Si le dossier parent n'existe pas, on doit regarder si il y a l'option "-p"
+	if [[ $(chemin_existe $archive $dossier_parent) != "dossier" ]]; then
+		if [[ $p == True ]]; then 
+			# On appel la fonction recursivement avec un niveau de moins
+			commande-mkdir $1 -p ${3%\\*}
+		else
+			exit 1
+		fi
+	fi
+
+	# On sait que si on est ici, le dossier parent existe
+	nom_dossier=${chemin_abs#"$dossier_parent\\"}
+
+	header=""
+	contenu=""
+	
+	(	
+		IFS= 
+		read -r dim_header
+		read -r
+
+		fin_header=$(echo $dim_header | awk -F ':' '{print $2}')
+		printf -v recherche 'directory %s' "$dossier_parent"
+
+		# On cherche le dossier dans lequel on va inserer notre dossier
+		i=3
+		while read -r ligne; do
+			((i++))
+			printf -v header '%s%s\n' "$header" "$ligne"
+			if [[ "$ligne" == "$recherche"  ]]; then break; fi
+		done
+
+		# On insere le nouveau dossier
+		nv_ligne="$nom_dossier drw-r--r-- 0"
+		printf -v header '%s%s\n' "$header" "$nv_ligne"
+
+		while read -r ligne; do
+			((i++))
+			printf -v header '%s%s\n' "$header" "$ligne"
+			if [[ "$ligne" == "@" ]]; then
+				printf -v header '%sdirectory %s\n@\n' "$header" "$chemin_abs"
+				break
+			fi
+		done
+
+		# On continu jusqu'à la fin du header
+		while [[ $i -le $fin_header ]] && read -r ligne; do
+			((i++))
+			printf -v header '%s%s\n' "$header" "$ligne"
+		done
+
+		# On lit la fin du fichier
+		contenu=$(cat)
+
+		# On relit le header pour pouvoir ajouter 3 pour le debut du contenu de chaque fichier 
+		# (car nous avons ajouté une une ligne pour le nom du dossier et deux lignes pour le header du dossier)
+		header=$(
+			while true; do
+				if ! read -r header_dossier; then break; fi
+				printf '%s\n' "$header_dossier"
+				while true; do
+					if ! read -r ligne; then break; fi
+					if [[ "$ligne" == "@" ]]; then
+						printf '%s\n' "$ligne"
+						break
+					fi
+					droits=$(echo "$ligne" | awk '{print $2}')
+					if [[ "$droits" =~ ^-.* ]]; then
+						nom=$(echo "$ligne" | awk '{print $1}')
+						taille=$(echo "$ligne" | awk '{print $3}')
+						debut=$(echo "$ligne" | awk '{print $4}')
+						nb_lignes=$(echo "$ligne" | awk '{print $5}')
+
+						debut_contenu=$((debut+2))
+
+						printf '%s %s %s %s %s\n' "$nom" "$droits" "$taille" "$debut_contenu" "$nb_lignes"
+					else
+						printf '%s\n' "$ligne"
+					fi
+
+				done
+			done <<< "$header"
+		)
+
+		if [ ! -z "$header" ]; then
+			printf -v header '%s\n' "$header"
+		fi
+
+		nv_dim_header=3:$((fin_header+3))
+
+		printf '%s\n\n%s%s%s%s' "$nv_dim_header" "$header" "$contenu" > .tmp
+
+	) < $archive
+	rm $archive
+	mv .tmp $archive
 }
 
 # On accepte et traite les connexions
