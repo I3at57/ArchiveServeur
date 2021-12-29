@@ -1,8 +1,4 @@
 #!/bin/bash
-if [[ $# -ne 3 ]]; then 
-    echo "Usage: vsh_create <host> <port> <nom_archive>"
-    exit 1
-fi
 
 # Créer un fichier temporaire dans /tmp
 tmp_header=$(mktemp /tmp/vsh_create.XXXXXX)
