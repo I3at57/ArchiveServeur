@@ -59,7 +59,8 @@ gerer_input() {
             ;;
 
         mkdir)
-            echo mkdir
+            chemin=$(combiner_chemins "$pwd" "$1")
+            echo mkdir $archive $chemin | ncat $host $port
             ;;
         exit)
             exit
