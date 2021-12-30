@@ -165,8 +165,9 @@ function commande-lire-fichier() {
 }
 
 function commande-list-archives() {
-	archives=$(ls -lA $LOCATION | cat | sed 's/$/ - /g' | egrep -o [A-Z].*$)
-	echo -e $archives
+	archives=$(ls $LOCATION -lA | tail +2 | cut -d ' ' -f6-)
+	echo "$archives" | wc -c
+	echo "$archives"
 }
 
 function commande-ls() {
