@@ -165,7 +165,7 @@ function commande-lire-fichier() {
 }
 
 function commande-list-archives() {
-	archives=$(ls $LOCATION -lA | tail +2 | cut -d ' ' -f6-)
+	archives=$(ls $LOCATION -lA | tr -s ' ' | tail +2 | cut -d ' ' -f6- | column -t -o ' ')
 	echo "$archives" | wc -c
 	echo "$archives"
 }
