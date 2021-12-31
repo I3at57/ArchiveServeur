@@ -7,8 +7,8 @@ source $ROOT/utils
 #FONCTION : archive_is_existing
 #Vérifie si l'archive souhaitée existe vraiment sur le serveur
 function archive_is_existing() {
-	find="$(bash $ROOT/vsh_list $1 $2)"
-	if [[ $find =~ " $3 -" ]]
+	find="$(bash $ROOT/vsh_list $1 $2 | egrep ".* $3$")"
+	if [[ $find =~ " $3" ]]
 	then
 		TROUVE='OUI'
 	else
