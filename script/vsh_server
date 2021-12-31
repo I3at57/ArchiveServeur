@@ -214,9 +214,13 @@ function commande-ls() {
 				fi
 			fi
 
-		#done <<< $(get_contenu_dossier $archive $chemin_abs) | column -t
 		done <<< $(get_contenu_dossier $archive $chemin_abs)
 	)
+
+	if [[ $ls_l == 'True' ]]; then
+		resultat=$(echo "$resultat" | column -t)
+	fi
+
 	echo -e "$resultat" | wc -c
 	echo -e "$resultat"
 }
