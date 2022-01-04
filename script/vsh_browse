@@ -50,11 +50,24 @@ gerer_input() {
 
         rm)
             chemin=$(combiner_chemins "$pwd" "$1")
+            resultat=$(env_rcv_ligne $host $port chemin_existe $archive ${chemin#\\})
+
+            if [[ $resultat == "erreur" ]]; then 
+                echo "Erreur: \"$chemin\" n'existe pas"
+                return
+            fi
+
             echo rm $archive $chemin | ncat $host $port
             ;;
 
         touch)
             chemin=$(combiner_chemins "$pwd" "$1")
+            resultat=$(env_rcv_ligne $host $port chemin_existe $archive ${chemin#\\})
+            if [[ $resultat != "erreur" ]]; then 
+                echo "Erreur: \"$chemin\" existe deja"
+                return
+            fi
+
             echo touch $archive $chemin | ncat $host $port
             ;;
 
@@ -62,12 +75,22 @@ gerer_input() {
             if [[ "$1" == -* ]]; then
                 if [[ "$1" == "-p" ]]; then
                     chemin=$(combiner_chemins "$pwd" "$2")
+                    resultat=$(env_rcv_ligne $host $port chemin_existe $archive ${chemin#\\})
+                    if [[ $resultat != "erreur" ]]; then 
+                        echo "Erreur: \"$chemin\" existe deja"
+                        return
+                    fi
                     echo mkdir $archive -p $chemin | ncat $host $port
                 else
                     echo "Error: mkdir: argument '$1' pas connu"
                 fi
             else
                 chemin=$(combiner_chemins "$pwd" "$1")
+                resultat=$(env_rcv_ligne $host $port chemin_existe $archive ${chemin#\\})
+                if [[ $resultat != "erreur" ]]; then 
+                    echo "Erreur: \"$chemin\" existe deja"
+                    return
+                fi
                 echo mkdir $archive $chemin | ncat $host $port
             fi
             ;;
