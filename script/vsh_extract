@@ -21,20 +21,20 @@ function archive_is_existing() {
 #Initialise toutes les variables et crée les fichiers temporaires
 function get_values() {
 	ELDER_DIR=$(pwd) #Place ou le script s'execute
-	ARCHIVE="$1" #Nom de l'archive qui doit être présente dans ELDER_DIR
+	local ARCHIVE="$1" #Nom de l'archive qui doit être présente dans ELDER_DIR
 
 	DEBUT_HEADER=$(head -1 $ARCHIVE | cut -d':' -f1)
 	DEBUT_BODY=$(head -1 $ARCHIVE | cut -d':' -f2)
 	NBR_LIGNE_ARCH=$(wc -l $ARCHIVE | cut -d' ' -f1)
 
 	#Crée deux fichiers temporaires pour le body et le header
-	tail -$(($NBR_LIGNE_ARCH - $DEBUT_BODY)) $ARCHIVE > .tempbody
-	tail -$(($NBR_LIGNE_ARCH - $DEBUT_HEADER + 1)) $ARCHIVE | head -$(($DEBUT_BODY - $DEBUT_HEADER + 1)) | sed 's/\\/\//g' > .temphead
+	tail -$(($NBR_LIGNE_ARCH - $DEBUT_BODY)) $ARCHIVE > /tmp/.tempbody
+	tail -$(($NBR_LIGNE_ARCH - $DEBUT_HEADER + 1)) $ARCHIVE | head -$(($DEBUT_BODY - $DEBUT_HEADER + 1)) | sed 's/\\/\//g' > /tmp/.temphead
 
-	path=$(head -1 .temphead | cut -d' ' -f2)
+	path=$(head -1 /tmp/.temphead | cut -d' ' -f2)
 	NOM_BASE="$(basename $path)"
 	NOM_DROP="$(dirname $path)"
-
+	
 	mkdir -p "./$NOM_BASE"
 }
 
@@ -44,12 +44,10 @@ function get_values() {
 function build() {
 	while read lines
 	do
-		#echo $lines
 		if [[ $lines =~ ^directory ]]
 		then
 			drop=$(echo $NOM_DROP | sed 's/\//\\\//g')
 			currentdir=".$(echo $lines | cut -d' ' -f2 | sed "s/$drop//g")"
-			#echo $currentdir
 		else
 			if ((1!=2)) #Zone de contrôle
 			then
@@ -65,7 +63,7 @@ function build() {
 					debut_file=$(echo $lines | cut -d' ' -f4)
 					nbr_file=$(echo $lines | cut -d' ' -f5)
 					marqA=$((debut_file - DEBUT_BODY + nbr_file - 1))
-					head -$marqA .tempbody | tail -$nbr_file > $path
+					head -$marqA /tmp/.tempbody | tail -$nbr_file > $path
 
 					droits=$(echo $lines | cut -d' ' -f2)
 					user=${droits:1:3}
@@ -78,7 +76,7 @@ function build() {
 				fi
 			fi
 		fi
-	done < .temphead
+	done < /tmp/.temphead
 }
 
 ######################################################################################
@@ -94,10 +92,10 @@ archive_is_existing $SERVER $PORT $ARCHIVE
 if [ $TROUVE == 'OUI' ]
 then
 	echo "L'archive souhaitée existe."
-	lire_fichier $SERVER $PORT $ARCHIVE $ARCHIVE
-	get_values $ARCHIVE	#Récupère les varibales de l'archive
+	lire_fichier $SERVER $PORT $ARCHIVE /tmp/$ARCHIVE
+	get_values /tmp/$ARCHIVE	#Récupère les varibales de l'archive
 	build	#recrée l'arboréscence
-	rm .temphead .tempbody $ARCHIVE
+	rm /tmp/.temphead /tmp/.tempbody /tmp/$ARCHIVE
 else
 	echo "L'archive souhaitée n'existe pas."
 fi
