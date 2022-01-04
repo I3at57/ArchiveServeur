@@ -586,7 +586,6 @@ function commande-touch() {
 	) < $archive
 	rm $archive
 	mv .tmp $archive
-	rm .tmp
 }
 
 function commande-mkdir() {
