@@ -677,7 +677,7 @@ function commande-mkdir() {
 						debut=$(echo "$ligne" | awk '{print $4}')
 						nb_lignes=$(echo "$ligne" | awk '{print $5}')
 
-						debut_contenu=$((debut+2))
+						debut_contenu=$((debut+3))
 
 						printf '%s %s %s %s %s\n' "$nom" "$droits" "$taille" "$debut_contenu" "$nb_lignes"
 					else
