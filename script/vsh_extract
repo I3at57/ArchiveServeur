@@ -24,13 +24,12 @@ function get_values() {
 	local ARCHIVE="$1" #Nom de l'archive qui doit être présente dans ELDER_DIR
 
 	DEBUT_HEADER=$(head -1 $ARCHIVE | cut -d':' -f1)
-	DEBUT_BODY=$(head -1 $ARCHIVE | cut -d':' -f2)
-	NBR_LIGNE_ARCH=$(wc -l $ARCHIVE | cut -d' ' -f1)
+	FIN_HEADER=$(head -1 $ARCHIVE | cut -d':' -f2)
 
 	#Crée deux fichiers temporaires pour le body et le header
-	tail -$(($NBR_LIGNE_ARCH - $DEBUT_BODY)) $ARCHIVE > /tmp/.tempbody
-	tail -$(($NBR_LIGNE_ARCH - $DEBUT_HEADER + 1)) $ARCHIVE | head -$(($DEBUT_BODY - $DEBUT_HEADER + 1)) | sed 's/\\/\//g' > /tmp/.temphead
-
+	tail +$DEBUT_BODY $ARCHIVE > /tmp/.tempbody
+	head -$FIN_HEADER $ARCHIVE | tail +$DEBUT_HEADER | sed 's/\\/\//g' > /tmp/.temphead
+	
 	path=$(head -1 /tmp/.temphead | cut -d' ' -f2)
 	NOM_BASE="$(basename $path)"
 	NOM_DROP="$(dirname $path)"
