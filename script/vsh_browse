@@ -17,9 +17,16 @@ gerer_input() {
             ;;
 
         ls)
-            dossier_recherche=$(combiner_chemins "$pwd" "$2")
-            dossier_recherche=${dossier_recherche#\\}
-            env_rcv_requete $host $port ls $archive $1 $dossier_recherche
+            if [[ "$1" == "-"* ]]; then
+                args="$1"
+                dossier_recherche=$(combiner_chemins "$pwd" "$2")
+                dossier_recherche=${dossier_recherche#\\}
+                env_rcv_requete $host $port ls $archive "$args" $dossier_recherche
+            else
+                dossier_recherche=$(combiner_chemins "$pwd" "$1")
+                dossier_recherche=${dossier_recherche#\\}
+                env_rcv_requete $host $port ls $archive $dossier_recherche
+            fi
             ;;
         
         cd)
